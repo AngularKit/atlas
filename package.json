@@ -1,0 +1,55 @@
+{
+  "name": "@angularkit/atlas",
+  "version": "0.1.0",
+  "description": "Evidence-backed static inventory of Angular routes for audits and AI agents.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "angular-atlas": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "schema",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:package": "node scripts/test-package.mjs",
+    "quality": "npm run typecheck && npm test && npm run test:package",
+    "prepack": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AngularKit/atlas.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "angular",
+    "router",
+    "audit",
+    "static-analysis",
+    "ai-agents"
+  ],
+  "dependencies": {
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "ajv": "^8.20.0"
+  }
+}
