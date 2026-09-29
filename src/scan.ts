@@ -54,67 +54,69 @@ export function scan(root = '.', options: ScanOptions = {}): Inventory {
     }
     const next = new Set(ancestors).add(array);
     const elements = reader.array(array);
-    for (const [order, element] of elements.entries()) {
-      currentRoute = parent?.id ?? null;
-      const routeNode = reader.resolve(element);
-      if (routeNode && next.has(routeNode)) {
-        report('CYCLIC_ROUTES', 'Route object is already an ancestor of this branch.', element);
-        continue;
-      }
-      const descendants = routeNode ? new Set(next).add(routeNode) : next;
+    for (const [order, scoped] of elements.entries()) {
       if (routes.length >= 10_000) {
-        report('ANALYSIS_LIMIT', 'Route limit exceeded; remaining routes were not expanded.', element);
+        report('ANALYSIS_LIMIT', 'Route limit exceeded; remaining routes were not expanded.', scoped.node);
         return;
       }
-      const id = `r${routes.length + 1}`;
-      currentRoute = id;
-      const props = reader.object(element);
-      const uncertain = !props || reader.incompleteObjects.has(props);
-      const field = (key: string) => props?.get(key);
-      const routePath = field('matcher') ? null : readString(field('path'), uncertain ? null : '');
-      const outlet = readString(field('outlet'), uncertain ? null : 'primary');
-      const parentPath = parent ? parent.fullPath : '';
-      const fullPath = routePath === null || outlet !== 'primary' || parentPath === null ? null
-        : `/${[parentPath, routePath].filter(Boolean).join('/')}`.replace(/\/{2,}/g, '/');
-      const eager = field('component');
-      const lazy = field('loadComponent');
-      const redirect = field('redirectTo');
-      const children = field('children');
-      const lazyChildren = field('loadChildren');
-      const record: RouteRecord = {
-        id, entryPointId: entryId, parentId: parent?.id ?? null, order,
-        source: project.source(element), path: routePath, fullPath,
-        pathMatch: readString(field('pathMatch'), uncertain ? null : 'prefix'), outlet,
-        kind: redirect ? 'redirect' : eager || lazy ? 'screen' : props && !uncertain ? 'container' : 'unknown',
-        component: eager ? component(eager, false) : lazy ? component(lazy, true) : null,
-        redirect: redirect ? { expression: redirect.getText(), target: readString(redirect, null), source: project.source(redirect) } : null,
-        guards: {}, resolvers: {}, lazyChildren: !!lazyChildren,
-      };
-      routes.push(record);
-      if (field('matcher')) report('CUSTOM_MATCHER', 'Custom matcher retained as an unresolved URL; descendants have no inferred full URL.', field('matcher')!);
-      if (outlet !== 'primary') report('NAMED_OUTLET', 'Named or unresolved outlet: no linear full URL is inferred.', field('outlet') ?? element);
-      for (const kind of guardKinds) {
-        const value = field(kind);
-        if (value) record.guards[kind] = reader.array(value).map(node => reader.reference(node));
-      }
-      const resolve = field('resolve');
-      if (resolve) {
-        const resolvers = reader.object(resolve);
-        if (resolvers) for (const [key, value] of resolvers) {
-          Object.defineProperty(record.resolvers, key, { value: reader.reference(value), enumerable: true, configurable: true, writable: true });
+      reader.withElement(scoped, element => {
+        currentRoute = parent?.id ?? null;
+        const routeNode = reader.resolve(element);
+        if (routeNode && next.has(routeNode)) {
+          report('CYCLIC_ROUTES', 'Route object is already an ancestor of this branch.', element);
+          return;
         }
-      }
-      if (eager && lazy) report('CONFLICTING_COMPONENT', 'Both component and loadComponent are declared; eager component shown for inspection.', element);
-      if (children && lazyChildren) report('CONFLICTING_CHILDREN', 'Both children and loadChildren are declared; inspect their configuration.', element);
-      if (children) visitArray(children, entryId, record, descendants);
-      if (lazyChildren) {
+        const descendants = routeNode ? new Set(next).add(routeNode) : next;
+        const id = `r${routes.length + 1}`;
         currentRoute = id;
-        const target = reader.lazy(lazyChildren);
-        if (target) {
-          if (ts.isClassDeclaration(target)) report('LAZY_NGMODULE', 'Lazy NgModule route extraction is not supported in this prototype.', lazyChildren);
-          else visitArray(target, entryId, record, descendants);
+        const props = reader.object(element);
+        const uncertain = !props || reader.incompleteObjects.has(props);
+        const field = (key: string) => props?.get(key);
+        const routePath = field('matcher') ? null : readString(field('path'), uncertain ? null : '');
+        const outlet = readString(field('outlet'), uncertain ? null : 'primary');
+        const parentPath = parent ? parent.fullPath : '';
+        const fullPath = routePath === null || outlet !== 'primary' || parentPath === null ? null
+          : `/${[parentPath, routePath].filter(Boolean).join('/')}`.replace(/\/{2,}/g, '/');
+        const eager = field('component');
+        const lazy = field('loadComponent');
+        const redirect = field('redirectTo');
+        const children = field('children');
+        const lazyChildren = field('loadChildren');
+        const record: RouteRecord = {
+          id, entryPointId: entryId, parentId: parent?.id ?? null, order,
+          source: project.source(element), path: routePath, fullPath,
+          pathMatch: readString(field('pathMatch'), uncertain ? null : 'prefix'), outlet,
+          kind: redirect ? 'redirect' : eager || lazy ? 'screen' : props && !uncertain ? 'container' : 'unknown',
+          component: eager ? component(eager, false) : lazy ? component(lazy, true) : null,
+          redirect: redirect ? { expression: redirect.getText(), target: readString(redirect, null), source: project.source(redirect) } : null,
+          guards: {}, resolvers: {}, lazyChildren: !!lazyChildren,
+        };
+        routes.push(record);
+        if (field('matcher')) report('CUSTOM_MATCHER', 'Custom matcher retained as an unresolved URL; descendants have no inferred full URL.', field('matcher')!);
+        if (outlet !== 'primary') report('NAMED_OUTLET', 'Named or unresolved outlet: no linear full URL is inferred.', field('outlet') ?? element);
+        for (const kind of guardKinds) {
+          const value = field(kind);
+          if (value) record.guards[kind] = reader.array(value).map(element => reader.withElement(element, node => reader.reference(node)));
         }
-      }
+        const resolve = field('resolve');
+        if (resolve) {
+          const resolvers = reader.object(resolve);
+          if (resolvers) for (const [key, value] of resolvers) {
+            Object.defineProperty(record.resolvers, key, { value: reader.reference(value), enumerable: true, configurable: true, writable: true });
+          }
+        }
+        if (eager && lazy) report('CONFLICTING_COMPONENT', 'Both component and loadComponent are declared; eager component shown for inspection.', element);
+        if (children && lazyChildren) report('CONFLICTING_CHILDREN', 'Both children and loadChildren are declared; inspect their configuration.', element);
+        if (children) visitArray(children, entryId, record, descendants);
+        if (lazyChildren) {
+          currentRoute = id;
+          const target = reader.lazy(lazyChildren);
+          if (target) {
+            if (ts.isClassDeclaration(target)) report('LAZY_NGMODULE', 'Lazy NgModule route extraction is not supported in this prototype.', lazyChildren);
+            else visitArray(target, entryId, record, descendants);
+          }
+        }
+      });
     }
     currentRoute = parent?.id ?? null;
   }

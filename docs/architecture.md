@@ -15,6 +15,8 @@ La CLI dépend de l'API `scan`/`toMarkdown`. Le rendu ne lit pas le dépôt. La 
 
 Le lecteur statique borne la profondeur et le nombre d'opérations. Le graphe borne le nombre d'occurrences de routes. La réutilisation d'un même tableau dans plusieurs branches est valide ; seul un retour vers un ancêtre constitue un cycle.
 
+Les tableaux générés transportent le nœud AST d'origine et un environnement de valeurs primitives indexé par symboles TypeScript. Chaque occurrence est lue dans cet environnement, restauré après la lecture : les scopes imbriqués et les homonymes restent distincts. Aucun AST synthétique ne remplace les preuves source. Les expressions de références restent celles du code, même quand le chemin est calculé. Une source partiellement inconnue bloque son `.map()` entier, car les indices ne seraient plus fiables. L'expansion est limitée à 10 000 éléments par tableau et au budget global du lecteur.
+
 Les spreads inconnus invalident les propriétés précédentes qu'ils pourraient écraser. Les propriétés explicites suivantes peuvent être conservées. Les champs dont la valeur est incertaine ne deviennent pas des valeurs par défaut fiables.
 
 Les guards conservent leur lieu de déclaration. Le modèle ne confond pas `canActivate` d'un parent et `canActivateChild`, ni déclaration d'un guard et autorisation effective. Les redirects ne sont pas des arêtes de parcours observé.

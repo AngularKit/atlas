@@ -275,15 +275,14 @@ test('unwraps a lazy namespace reexport once, like the Angular router', t => {
   assert.deepEqual(result.routes.map(r=>r.fullPath),['/lessons','/lessons/intro']);
 });
 
-test('map-generated routes stay explicitly unresolved without executing callbacks', t => {
+test('expands literal map-generated routes without executing callbacks', t => {
   const root = project(t, {
     'src/app.ts': `import {provideRouter} from '@angular/router';
       provideRouter([{path:'known'},...['1','2'].map(id=>({path:'module-'+id}))]);`,
   });
   const result = scan(root);
-  assert.deepEqual(result.routes.map(r=>r.fullPath),['/known']);
-  assert.ok(result.diagnostics.some(d=>d.code==='UNRESOLVED_ARRAY' && d.source.file==='src/app.ts'));
-  assert.equal(result.scope.status,'partial');
+  assert.deepEqual(result.routes.map(r=>r.fullPath),['/known', '/module-1', '/module-2']);
+  assert.deepEqual(result.diagnostics, []);
 });
 
 test('reports SSG policy as a separate unanalysed scope, without evaluating prerender generators', t => {
@@ -415,4 +414,121 @@ test('CLI emits clean JSON, writes reports, refuses overwrite and signals partia
   const fatal = run([]);
   assert.equal(fatal.status, 1);
   assert.equal(fatal.stdout, '');
+});
+
+
+test('generated route bindings survive nested maps, lazy imports and preserve source evidence', t => {
+  const root = project(t, {
+    'src/app.ts': "import {provideRouter} from '@angular/router'; provideRouter([{path:'courses',loadChildren:()=>import('./generated')}]);",
+    'src/generated.ts': `import {Home} from './pages';
+const ids = ['alpha', 'beta'] as const;
+const guard = () => true;
+const resolveItem = (id: string) => () => id;
+export default ids.map((id, index) => ({
+  path: 'module-' + id,
+  component: Home,
+  canActivate: [guard],
+  resolve: { item: resolveItem(id) },
+  children: [1, 2].map(lesson => ({
+    path: id + '-' + (index + lesson),
+    loadComponent: () => import('./pages').then(m => m.Detail),
+  })),
+}));`,
+  });
+  const result = scan(root);
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.routes.map(r => r.fullPath), ['/courses', '/courses/module-alpha', '/courses/module-alpha/alpha-1', '/courses/module-alpha/alpha-2', '/courses/module-beta', '/courses/module-beta/beta-2', '/courses/module-beta/beta-3']);
+  assert.deepEqual(result.routes.map(r => r.order), [0, 0, 0, 1, 1, 0, 1]);
+  for (const route of [result.routes[1], result.routes[4]]) {
+    assert.equal(route.component.name, 'Home');
+    assert.equal(route.guards.canActivate[0].name, 'guard');
+    assert.equal(route.resolvers.item.expression, 'resolveItem(id)');
+    assert.deepEqual(route.source, {file:'src/generated.ts', line:5, column:39});
+  }
+  assert.equal(result.routes[2].parentId, result.routes[1].id);
+  assert.equal(result.routes[5].parentId, result.routes[4].id);
+  assert.equal(result.routes[5].component.name, 'Detail');
+  assert.equal(result.routes[5].component.declaration.file, 'src/pages.ts');
+  assert.ok(validate(result), JSON.stringify(validate.errors));
+  assert.deepEqual(scan(root), result);
+});
+
+test('expands bounded Array.from, templates, const lengths and callback aliases', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+const length = 2 + 1;
+const indices = Array.from({ length }, (_, index) => index + 1);
+const route = (id: number) => { return { path: \`lesson-\${id}\` }; };
+provideRouter([...indices.map(route), ...Array.from({length:2}, (_, index) => ({path:'direct-' + index})), ...[].map(id=>({path:id}))]);`,
+  }, {noLib:false});
+  const result = scan(root);
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.routes.map(r=>r.fullPath), ['/lesson-1', '/lesson-2', '/lesson-3', '/direct-0', '/direct-1']);
+});
+
+test('does not confuse callback bindings with same-named constants or sibling callbacks', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+const id = 'global';
+const shared = [{path:id}];
+provideRouter([...['a','b'].map(id=>({path:id, children:shared})), ...['c'].map(id=>({path:id})), {path:id}]);`,
+  });
+  const result = scan(root);
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.routes.map(r=>r.fullPath), ['/a', '/a/global', '/b', '/b/global', '/c', '/global']);
+});
+
+test('unsupported generators remain partial and never run callbacks or application factories', t => {
+  const cases = [
+    `[1].map(id=>{throw new Error('MUST NOT RUN')})`,
+    `[1].map(async id=>({path:'async'}))`,
+    `[1].map((id = 2)=>({path:'default'}))`,
+    `[1].map((...ids)=>({path:'rest'}))`,
+    `[1].map((id, index, array)=>({path:'third-param'}))`,
+    `[1].map(id=>({path:'with-this'}), {})`,
+    `[getId()].map(id=>({path:'unknown-' + id}))`,
+    `[1,,3].map((id,index)=>({path:'hole-' + index}))`,
+    `[...getIds(), 3].map((id,index)=>({path:'shifted-' + index}))`,
+    `Array.from({length:-1}, (_,i)=>({path:'negative'}))`,
+    `Array.from({length:1.5}, (_,i)=>({path:'fractional'}))`,
+    `Array.from({length:10001}, (_,i)=>({path:'large'}))`,
+    `Array.from({length:2, ...getConfig()}, (_,i)=>({path:'unknown'}))`,
+    `Array.from({length:2, [Symbol.iterator]:getIterator}, (_,i)=>({path:'iterable'}))`,
+  ];
+  for (const expression of cases) {
+    const root = project(t, {'src/app.ts': `import {provideRouter} from '@angular/router'; provideRouter([{path:'known'}, ...${expression}]);`}, {noLib:false});
+    const result = scan(root);
+    assert.deepEqual(result.routes.map(r=>r.fullPath), ['/known'], expression);
+    assert.equal(result.scope.status, 'partial', expression);
+    assert.ok(result.diagnostics.length, expression);
+  }
+});
+
+test('does not mistake a shadowed Array.from for the JavaScript builtin', t => {
+  const root = project(t, {'src/app.ts': `import {provideRouter} from '@angular/router';
+const Array = {from: (...args:unknown[])=>{throw new Error('MUST NOT RUN')}};
+provideRouter(Array.from({length:2}, (_,i)=>({path:'fake-' + i})));`}, {noLib:false});
+  const result = scan(root);
+  assert.deepEqual(result.routes, []);
+  assert.ok(result.diagnostics.some(d=>d.code==='UNRESOLVED_ARRAY'));
+});
+
+test('generated dynamic fields remain unresolved while static siblings are retained', t => {
+  const root = project(t, {'src/app.ts': `import {provideRouter} from '@angular/router';
+provideRouter(['a','b'].map(id=>({path:computePath(id), children:[{path:'child'}]})));`});
+  const result = scan(root);
+  assert.equal(result.routes.length, 4);
+  assert.ok(result.routes.every(route=>route.fullPath===null));
+  assert.equal(result.diagnostics.filter(d=>d.code==='UNRESOLVED_VALUE').length,2);
+});
+
+test('generated array cycles terminate and unknown bindings cannot invent template paths', t => {
+  const root = project(t, {'src/app.ts': `import {provideRouter} from '@angular/router';
+const recursive = recursive.map(id=>({path:id}));
+provideRouter([...recursive, ...['a'].map(id=>({path: \`\${unknown}-\${id}\`}))]);`});
+  const result = scan(root);
+  assert.equal(result.routes.length, 1);
+  assert.equal(result.routes[0].fullPath, null);
+  assert.ok(result.diagnostics.some(d=>d.code==='CYCLIC_REFERENCE'));
+  assert.ok(result.diagnostics.some(d=>d.code==='UNRESOLVED_VALUE'));
 });

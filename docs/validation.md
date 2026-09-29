@@ -24,6 +24,8 @@ Les rapports de l'application restent locaux. Le dépôt public ne contient pas 
 - Routes imbriquées, routes vides, alias de modules et de symboles, spreads, redirections et wildcards.
 - Exports différés nommés/par défaut et réexports de composants.
 - Réutilisation de tableaux, cycles de tableaux/objets et limites d'analyse.
+- Génération bornée par `.map()` / `Array.from()`, bindings lexicaux imbriqués, chemins calculés et conservation des preuves.
+- Refus des callbacks arbitraires, des sources incomplètes qui décaleraient les indices et des faux `Array.from`.
 - Expressions dynamiques, outlets, matchers et configurations runtime signalés comme limites.
 - Exclusion des tests et sorties de build, absence d'exécution du code applicatif.
 - Déterminisme et empreinte des sources/configurations/déclarations.
@@ -40,14 +42,14 @@ Analyse en lecture seule de copies propres des branches de référence, avec les
 
 | Cas | Référence établie par lecture des configurations | Détecté | Manquant | Diagnostic SSG |
 |---|---:|---:|---:|---|
-| Site Angular 22.0 à prérendu | 31 | 22 | 9 | Présent |
-| Application Angular 22.0 / Nx avec cours et espace connecté | 105 | 47 | 58 | Présent |
+| Site Angular 22.0 à prérendu | 31 | 31 | 0 | Présent |
+| Application Angular 22.0 / Nx avec cours et espace connecté | 105 | 105 | 0 | Présent |
 
-Le décompte indépendant du premier cas relève 23 objets de route dans les configurations atteignables. Un objet est un modèle répété par `.map()` sur 9 valeurs : `23 - 1 + 9 = 31`. Atlas retrouve les 22 objets non générés et signale le tableau manquant.
+Le décompte indépendant du premier cas relève 23 objets de route dans les configurations atteignables. Un objet est un modèle répété par `.map()` sur 9 valeurs : `23 - 1 + 9 = 31`. Atlas retrouve les 22 objets non générés et les 9 occurrences du modèle.
 
-Le second cas contient 54 objets/modèles de route, dont 7 callbacks générant respectivement 9, 7, 7, 8, 9, 8 et 10 routes : `54 - 7 + 58 = 105`. Atlas retrouve les 47 objets non générés ; les 7 tableaux non résolus sont localisés séparément. Les routes parentes et leurs enfants sont conservés, même lorsqu'ils correspondent au même motif d'URL.
+Le second cas contient 54 objets/modèles de route, dont 7 callbacks générant respectivement 9, 7, 7, 8, 9, 8 et 10 routes : `54 - 7 + 58 = 105`. Atlas retrouve les 47 objets non générés et les 58 occurrences des 7 modèles. Les routes parentes et leurs enfants sont conservés, même lorsqu'ils correspondent au même motif d'URL.
 
-Ces essais ont révélé et permis de corriger deux formes statiques : les sélections d'exports déstructurées et les réexports de namespace dont Angular extrait l'export par défaut. Des fixtures indépendantes en conservent la régression. Aucun code des applications n'est copié dans le dépôt public.
+Ces essais ont permis de corriger les sélections d'exports déstructurées, les réexports de namespace dont Angular extrait l'export par défaut, puis les tableaux de primitives transformés par `.map()` et les séquences bornées `Array.from()`. La couverture avant cette dernière correction était de 22/31 et 47/105. Des fixtures indépendantes en conservent la régression. Aucun code des applications n'est copié dans le dépôt public.
 
 ### SSG
 
@@ -57,4 +59,6 @@ Atlas émet désormais `SERVER_RENDERING_NOT_ANALYZED` avec la source de l'enreg
 
 ### Conclusion de validation
 
-Les routes statiques imbriquées et différées sont désormais éprouvées sur des applications réelles, mais la couverture globale de ces deux projets n'est pas validée. Les routes générées par tableaux sont le prochain manque fonctionnel à traiter ; le rapprochement entre route client, politique de rendu et manifeste de prérendu est un chantier distinct.
+Les 67 occurrences ajoutées ont été vérifiées contre les chemins attendus établis indépendamment : 9 modules et 58 leçons. Les contrôles portent aussi sur les composants, parents, ordre, resolvers et références source. Les entrées déjà détectées conservent leurs informations et leurs relations parentales ; seuls les IDs et indices décalés par les insertions changent.
+
+La couverture des **déclarations client** de ces deux révisions est validée, sans diagnostic de tableau non résolu. Les seuls diagnostics restants concernent le SSG. Le rapprochement entre route client, politique de rendu et manifeste de prérendu reste un chantier distinct. Les projets analysés n'ont pas été modifiés.
