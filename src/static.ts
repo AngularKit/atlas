@@ -131,20 +131,20 @@ export class StaticReader {
   }
 
   /** Recognize actual Angular imports, including local import aliases, not just call names. */
-  angularExport(node: ts.Node, name: string): boolean {
+  angularExport(node: ts.Node, name: string, packageName = '@angular/router'): boolean {
     const symbol = this.project.checker.getSymbolAtLocation(node);
     for (const decl of symbol?.declarations ?? []) {
       if (ts.isImportSpecifier(decl) && (decl.propertyName ?? decl.name).text === name) {
         const statement = decl.parent.parent.parent;
-        if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === '@angular/router') return true;
+        if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === packageName) return true;
       }
     }
     const resolved = this.symbol(node);
     if (resolved?.getName() !== name) return false;
     return (resolved.declarations ?? []).some(decl => {
-      if (decl.getSourceFile().fileName.replaceAll('\\', '/').includes('/node_modules/@angular/router/')) return true;
+      if (decl.getSourceFile().fileName.replaceAll('\\', '/').includes(`/node_modules/${packageName}/`)) return true;
       for (let parent: ts.Node | undefined = decl.parent; parent; parent = parent.parent) {
-        if (ts.isModuleDeclaration(parent) && ts.isStringLiteral(parent.name) && parent.name.text === '@angular/router') return true;
+        if (ts.isModuleDeclaration(parent) && ts.isStringLiteral(parent.name) && parent.name.text === packageName) return true;
       }
       return false;
     });
@@ -175,12 +175,23 @@ export class StaticReader {
       }
       const selection = unwrap(callback.body);
       const parameter = callback.parameters[0]?.name;
-      if (!ts.isPropertyAccessExpression(selection) || !ts.isIdentifier(selection.expression)
-        || !parameter || !ts.isIdentifier(parameter) || selection.expression.text !== parameter.text) {
-        this.report('UNRESOLVED_LAZY', 'Expected import(...).then(module => module.export).', input);
+      let selectedExport: string | undefined;
+      if (parameter && !callback.parameters[0]?.initializer && !callback.parameters[0]?.dotDotDotToken) {
+        if (ts.isPropertyAccessExpression(selection) && ts.isIdentifier(selection.expression)
+          && ts.isIdentifier(parameter) && selection.expression.text === parameter.text) {
+          selectedExport = selection.name.text;
+        } else if (ts.isObjectBindingPattern(parameter) && ts.isIdentifier(selection)
+          && parameter.elements.every(binding => !binding.initializer && !binding.dotDotDotToken && ts.isIdentifier(binding.name))) {
+          const binding = parameter.elements.find(binding => ts.isIdentifier(binding.name) && binding.name.text === selection.text);
+          const property = binding?.propertyName ?? binding?.name;
+          if (property && (ts.isIdentifier(property) || ts.isStringLiteral(property))) selectedExport = property.text;
+        }
+      }
+      if (selectedExport === undefined) {
+        this.report('UNRESOLVED_LAZY', 'Expected a direct module export selection or a simple destructured export without defaults.', input);
         return undefined;
       }
-      exported = selection.name.text;
+      exported = selectedExport;
       body = unwrap(body.expression.expression);
     }
     if (!ts.isCallExpression(body) || body.expression.kind !== ts.SyntaxKind.ImportKeyword || !body.arguments[0]) {
@@ -192,7 +203,17 @@ export class StaticReader {
     const symbol = module ? this.project.checker.getSymbolAtLocation(module) : undefined;
     const found = symbol ? this.project.checker.getExportsOfModule(symbol).find(s => s.getName() === exported) : undefined;
     const target = found && found.flags & ts.SymbolFlags.Alias ? this.project.checker.getAliasedSymbol(found) : found;
-    const decl = target?.valueDeclaration ?? target?.declarations?.[0];
+    let decl = target?.valueDeclaration ?? target?.declarations?.[0];
+    // Angular unwraps a default export when a lazy loader returns a module
+    // namespace, including `export * as routes from './routes'` barrels.
+    if (decl && ts.isSourceFile(decl) && this.project.isLocal(decl.fileName)
+      && !excluded(this.project.relative(decl.fileName))) {
+      const namespace = this.project.checker.getSymbolAtLocation(decl);
+      const defaultExport = namespace ? this.project.checker.getExportsOfModule(namespace).find(s => s.getName() === 'default') : undefined;
+      const resolvedDefault = defaultExport && defaultExport.flags & ts.SymbolFlags.Alias
+        ? this.project.checker.getAliasedSymbol(defaultExport) : defaultExport;
+      decl = resolvedDefault?.valueDeclaration ?? resolvedDefault?.declarations?.[0];
+    }
     if (!decl) {
       this.report('UNRESOLVED_LAZY', `Cannot resolve lazy export ${exported} in ${specifier ?? 'dynamic module'}.`, input);
       return undefined;

@@ -229,6 +229,78 @@ test('default-exported lazy routes and re-exported classes are followed', t => {
   assert.equal(result.routes[1].component.name, 'Detail');
 });
 
+test('follows destructured lazy exports and renamed bindings through workspace aliases', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+      provideRouter([
+        {path:'shop',loadChildren:()=>import('@feature').then(({featureRoutes})=>featureRoutes)},
+        {path:'other',loadChildren:()=>import('@feature').then(({featureRoutes: selected})=>selected)},
+        {path:'screen',loadComponent:()=>import('./pages').then(({Detail: Page})=>Page)}
+      ]);`,
+    'src/feature/index.ts': `export {routes as featureRoutes} from './routes';`,
+    'src/feature/routes.ts': `export const routes = [{path:':id',loadComponent:()=>import('../pages').then(m=>m.Detail)}];`,
+  }, { paths: { '@feature': ['./src/feature/index.ts'] } });
+  const result = scan(root);
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.routes.map(r=>r.fullPath), ['/shop','/shop/:id','/other','/other/:id','/screen']);
+  assert.equal(result.routes.at(-1).component.name, 'Detail');
+  assert.ok(validate(result), JSON.stringify(validate.errors));
+});
+
+test('rejects destructured lazy defaults, rest and unrelated callback results', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+      const other = [];
+      provideRouter([
+        {path:'default',loadChildren:()=>import('./lazy').then(({routes = other})=>routes)},
+        {path:'rest',loadChildren:()=>import('./lazy').then(({...rest})=>rest)},
+        {path:'unrelated',loadChildren:()=>import('./lazy').then(({routes})=>other)}
+      ]);`,
+    'src/lazy.ts': `export const routes = [{path:'child'}];`,
+  });
+  const result = scan(root);
+  assert.equal(result.routes.length,3);
+  assert.equal(result.diagnostics.filter(d=>d.code==='UNRESOLVED_LAZY').length,3);
+});
+
+test('unwraps a lazy namespace reexport once, like the Angular router', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+      provideRouter([{path:'lessons',loadChildren:()=>import('./barrel').then(({routes})=>routes)}]);`,
+    'src/barrel.ts': `export * as routes from './feature';`,
+    'src/feature.ts': `export default [{path:'intro',loadComponent:()=>import('./pages').then(m=>m.Detail)}];`,
+  });
+  const result = scan(root);
+  assert.deepEqual(result.diagnostics,[]);
+  assert.deepEqual(result.routes.map(r=>r.fullPath),['/lessons','/lessons/intro']);
+});
+
+test('map-generated routes stay explicitly unresolved without executing callbacks', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+      provideRouter([{path:'known'},...['1','2'].map(id=>({path:'module-'+id}))]);`,
+  });
+  const result = scan(root);
+  assert.deepEqual(result.routes.map(r=>r.fullPath),['/known']);
+  assert.ok(result.diagnostics.some(d=>d.code==='UNRESOLVED_ARRAY' && d.source.file==='src/app.ts'));
+  assert.equal(result.scope.status,'partial');
+});
+
+test('reports SSG policy as a separate unanalysed scope, without evaluating prerender generators', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router'; provideRouter([{path:'blog/:slug'}]);`,
+    'src/server.ts': `import {withRoutes as policies} from '@angular/ssr';
+      policies([{path:'blog/:slug',renderMode:'Prerender',getPrerenderParams:()=>{throw new Error('MUST NOT RUN')}}]);`,
+    'src/decoy.ts': `function withRoutes(value:unknown) { return value; } withRoutes([]);`,
+  });
+  const result = scan(root, {entry:'src/app.ts'});
+  assert.equal(result.routes.length,1);
+  assert.equal(result.routes[0].fullPath,'/blog/:slug');
+  assert.equal(result.diagnostics.filter(d=>d.code==='SERVER_RENDERING_NOT_ANALYZED').length,1);
+  assert.equal(result.scope.status,'partial');
+  assert.ok(validate(result), JSON.stringify(validate.errors));
+});
+
 test('mutable references produce diagnostics', t => {
   const root = project(t, {
     'src/app.ts': `import {provideRouter} from '@angular/router'; let routes=[{path:'initial'}]; provideRouter(routes);`,

@@ -62,7 +62,11 @@ Une erreur de lecture, de syntaxe ou de configuration est fatale : aucun rapport
 
 ## Limites explicites du prototype
 
-Matchers personnalisés, outlets nommés, modules différés, assemblage `RouterModule.forChild`/`ROUTES`, `resetConfig` et fabriques arbitraires donnent des diagnostics. Les fonctions de chargement acceptées retournent directement `import('...')` ou `import('...').then(m => m.Export)` ; les fonctions à plusieurs instructions ne sont pas évaluées. Les modifications d'objets/tableaux après initialisation et les parcours conditionnels ne sont pas interprétés.
+Matchers personnalisés, outlets nommés, modules différés, assemblage `RouterModule.forChild`/`ROUTES`, `resetConfig` et fabriques arbitraires donnent des diagnostics. Les fonctions de chargement acceptées retournent directement `import('...')`, `import('...').then(m => m.Export)` ou une sélection déstructurée simple comme `.then(({ routes: selected }) => selected)`. Les réexports de namespaces avec export par défaut sont déballés comme par Angular. Les sélections à valeur par défaut ou rest et les fonctions à plusieurs instructions ne sont pas évaluées.
+
+Les tableaux de routes fabriqués par `.map()` ou `Array.from()` restent non résolus, même si leurs entrées sont des littéraux. Les essais sur deux applications réelles montrent que cette limite peut exclure une grande partie des routes : consulter les diagnostics avant d'utiliser les totaux pour un audit.
+
+Un appel `withRoutes` ou `provideServerRouting` de `@angular/ssr` produit `SERVER_RENDERING_NOT_ANALYZED`. Le rapport ne reconstitue ni les règles `RenderMode`, ni `getPrerenderParams`, ni les URLs générées par le build. Un chemin `/blog/:slug` ne représente pas la liste des pages SSG. Les modifications d'objets/tableaux après initialisation et les parcours conditionnels ne sont pas interprétés.
 
 Tests, stories, déclarations et dossiers générés connus sont exclus des cibles d'analyse. `excludedFiles` liste les exclusions rencontrées par le compilateur et le tsconfig ; il ne recense pas tous les fichiers ignorés sur disque. Les imports hors de la racine sélectionnée ne sont pas développés comme routes applicatives.
 

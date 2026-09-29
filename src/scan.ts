@@ -139,6 +139,10 @@ export function scan(root = '.', options: ScanOptions = {}): Inventory {
       if (reader.angularExport(node.expression, 'provideRoutes')) {
         report('ADDITIONAL_ROUTES', 'Additional provideRoutes registration is not assembled in this prototype.', node);
       }
+      if (reader.angularExport(node.expression, 'withRoutes', '@angular/ssr')
+        || reader.angularExport(node.expression, 'provideServerRouting', '@angular/ssr')) {
+        report('SERVER_RENDERING_NOT_ANALYZED', 'Server rendering configuration detected. RenderMode, prerender parameters and generated URLs are not analyzed; this report inventories client route declarations only.', node);
+      }
       if (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 'resetConfig') {
         const type = project.checker.getTypeAtLocation(node.expression.expression);
         if (type.symbol?.getName() === 'Router') report('RUNTIME_CONFIGURATION', 'Router.resetConfig changes routes at runtime and is not evaluated.', node);
@@ -170,6 +174,7 @@ export function scan(root = '.', options: ScanOptions = {}): Inventory {
         'Registration calls are discovered in the selected project, without proving their execution at bootstrap.',
         'Named outlets, custom matchers, lazy NgModules and arbitrary expressions are reported as unresolved.',
         'Navigation references (routerLink, navigate, navigateByUrl) are outside this first milestone.',
+        'Server rendering policies and generated prerender URLs are outside this first milestone.',
         'Excluded files lists encountered excluded inputs, not every excluded file on disk.',
         'Route order is the order of discovered siblings; unresolved array spreads can contain additional routes.',
       ],
