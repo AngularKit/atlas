@@ -9,7 +9,9 @@ Le moteur travaille sur les sources, sans charger les modules JavaScript du proj
 | `scan.ts` | Reconnaissance des enregistrements Angular et construction du graphe de routes avec preuves. |
 | `model.ts` | Contrat public de l'inventaire et des options. |
 | `compact.ts` | Projection légère du modèle complet, sans suppression de routes ni de diagnostics. |
-| `markdown.ts` | Rendu du même inventaire pour la lecture humaine. |
+| `markdown.ts` | Rendu détaillé de l’inventaire et sélection du format Markdown. |
+| `markdown-compact.ts` | Présentation par groupes de routes sœurs, avec annotations communes et points à vérifier en tête. |
+| `markdown-text.ts` | Échappement partagé des textes et références source Markdown. |
 | `cli.ts` | Arguments, entrées/sorties et codes de retour. |
 
 La CLI dépend de l'API `scan`/`toMarkdown`. Les rendus complet et compact ne lisent pas le dépôt. `scan()` conserve son contrat complet ; `toCompactInventory()` produit un contrat distinct identifié par `format`, et `toMarkdown()` accepte une option `compact`. La lecture des objets n'invoque aucune fonction métier ; une expression arbitraire est conservée ou signalée, jamais exécutée.

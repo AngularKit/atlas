@@ -70,7 +70,7 @@ Les mêmes inventaires sont rendus avec `--compact`. Les deux sorties JSON valid
 
 | Cas | JSON complet → compact | Markdown complet → compact |
 |---|---:|---:|
-| Site à prérendu, 31 routes | 32 348 → 11 577 octets | 9 781 → 2 778 octets |
-| Application Nx, 105 routes | 157 743 → 50 434 octets | 42 082 → 8 776 octets |
+| Site à prérendu, 31 routes | 32 348 → 11 577 octets | 9 781 → 3 392 octets |
+| Application Nx, 105 routes | 157 743 → 50 434 octets | 42 082 → 7 809 octets |
 
 La réduction provient des références détaillées et listes de fichiers omises, ainsi que de la suppression du tableau qui répétait l'arbre en Markdown. Aucune route ni aucun diagnostic n'est filtré. L'API complète et les sorties CLI sans option conservent leur contrat. Les tests couvrent aussi les chemins inconnus, les redirections dynamiques, les doublons, les enregistrements multiples, l'échappement Markdown et le code de sortie strict.

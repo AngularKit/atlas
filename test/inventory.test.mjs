@@ -561,12 +561,12 @@ provideRouter([{path:'same'}]);`});
   assert.ok(!('guards' in compact.routes[1]));
   assert.ok(!('declaration' in compact.routes[0].component));
   const md=toMarkdown(full,{compact:true});
-  assert.ok(md.includes('synthèse des routes'));
+  assert.ok(md.includes('Cartographie des routes'));
   assert.ok(md.includes('canActivate: auth'));
   assert.ok(md.includes('resolvers: item'));
   assert.ok(md.includes('→ /'));
   assert.ok(md.includes('outlet: aside'));
-  for(const route of full.routes) assert.ok(md.includes(`(${route.id})`));
+  for(const route of full.routes) assert.ok(md.includes(`| ${route.id} |`));
   assert.ok(md.includes('UNRESOLVED&#95;VALUE'));
   assert.ok(md.includes('Périmètre et limites'));
   assert.ok(!md.includes('### Détail'));
@@ -595,4 +595,30 @@ test('compact CLI supports JSON, Markdown and stdout while preserving partial ex
   assert.ok(!markdown.includes('<script>'));
   assert.ok(markdown.includes('UNRESOLVED&#95;VALUE'));
   assert.equal(run(['--compact','--json',json]).status,1);
+});
+
+
+test('readable Markdown groups siblings and shared metadata without conflating same-named components', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+import {Home} from './pages'; import {Home as OtherHome} from './other';
+const auth = () => true;
+provideRouter([{path:'area',children:[{path:'one',component:Home,canActivate:[auth]}, {path:'two',component:Home,canActivate:[auth]}]}, {path:'other',children:[{path:'same',component:Home}, {path:'same',component:OtherHome}]}]);
+provideRouter([]);`,
+    'src/other.ts': 'export class Home {}',
+  });
+  const inventory = scan(root);
+  const markdown = toMarkdown(inventory, {compact:true});
+  assert.ok(markdown.indexOf('## À vérifier') < markdown.indexOf('## e1 — Carte des routes'));
+  assert.ok(markdown.includes('### /area'));
+  assert.ok(markdown.includes('Sous-routes de **r1**'));
+  assert.equal(markdown.match(/Composant commun : \*\*Home\*\*/g)?.length, 1);
+  assert.equal(markdown.match(/canActivate: auth/g)?.length, 1);
+  assert.ok(markdown.includes('| one | r2 |'));
+  assert.ok(markdown.includes('| two | r3 |'));
+  assert.ok(markdown.includes('| same | Home | r5 |'));
+  assert.ok(markdown.includes('| same | Home | r6 |'));
+  for(const route of inventory.routes) assert.equal(markdown.split(`| ${route.id} |`).length - 1, 1);
+  assert.ok(markdown.includes('## e2 — Carte des routes'));
+  assert.ok(markdown.includes('Aucune route détectée pour cet enregistrement.'));
 });

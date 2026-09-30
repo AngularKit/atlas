@@ -42,7 +42,7 @@ try {
     const inventory = scan(process.argv[2]);
     if (!toMarkdown(inventory).includes('/packed')) process.exit(1);
     if (toCompactInventory(inventory).routes[0].fullPath !== '/packed') process.exit(1);
-    if (!toMarkdown(inventory, {compact:true}).includes('synthèse')) process.exit(1);
+    if (!toMarkdown(inventory, {compact:true}).includes('Cartographie des routes')) process.exit(1);
   `);
   execFileSync(process.execPath, ['api.mjs', target], { cwd: consumer, stdio: 'pipe' });
   console.log('Packed package installed offline: executable CLI, API, declarations and schema verified.');
