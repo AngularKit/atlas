@@ -74,3 +74,12 @@ Les mêmes inventaires sont rendus avec `--compact`. Les deux sorties JSON valid
 | Application Nx, 105 routes | 157 743 → 50 434 octets | 42 082 → 7 809 octets |
 
 La réduction provient des références détaillées et listes de fichiers omises, ainsi que de la suppression du tableau qui répétait l'arbre en Markdown. Aucune route ni aucun diagnostic n'est filtré. L'API complète et les sorties CLI sans option conservent leur contrat. Les tests couvrent aussi les chemins inconnus, les redirections dynamiques, les doublons, les enregistrements multiples, l'échappement Markdown et le code de sortie strict.
+
+
+## Carte HTML interactive — 30 septembre 2026
+
+Le même inventaire produit un fichier autonome avec branches repliables, recherche par chemin/composant, zoom, déplacement et panneau de preuves. L'ouverture initiale présente les routes racines. Les connexions décrivent la hiérarchie des déclarations, pas les parcours utilisateurs.
+
+Tests Chromium sur fichiers locaux : dépliage au clavier, recherche d'une route cachée, conservation du filtre, contexte parent, guards déclarés uniquement, sources et resolvers, doublons, retour à la vue d'ensemble, zoom, navigation depuis un diagnostic, état vide, mobile 390 × 844 et contenu source contenant des balises/scripts. Les scénarios ne déclenchent aucune requête réseau externe. Le test du package installé vérifie aussi la génération HTML par CLI et API.
+
+Les inventaires réels de 105 et 31 routes servent d'aperçus privés ; leur contenu n'est pas ajouté au dépôt public. L'analyse SSG reste partielle et le diagnostic est visible dès l'ouverture.

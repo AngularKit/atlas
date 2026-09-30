@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { scan, toMarkdown, toCompactInventory } from './index.js';
+import { scan, toMarkdown, toCompactInventory, toHtml } from './index.js';
 
 const help = `AngularKit Atlas — inventaire statique des routes Angular
 
@@ -12,6 +12,7 @@ Usage: angular-atlas [project-root] [options]
   --entry <file>     Limiter la découverte des registrations à un fichier
   --json <file>     Écrire l'inventaire JSON
   --md <file>       Écrire le rapport Markdown
+  --html <file>    Écrire la carte interactive HTML autonome
   --compact        Produire une synthèse JSON/Markdown sans preuves détaillées
   --fail-on-partial Retourner le code 2 si des branches ne sont pas résolues
   --help            Afficher cette aide
@@ -25,20 +26,21 @@ try {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
     options: {
-      tsconfig: { type: 'string' }, entry: { type: 'string' }, json: { type: 'string' }, md: { type: 'string' },
+      tsconfig: { type: 'string' }, entry: { type: 'string' }, json: { type: 'string' }, md: { type: 'string' }, html: { type: 'string' },
       help: { type: 'boolean' }, compact: { type: 'boolean' }, 'fail-on-partial': { type: 'boolean' },
     },
   });
   if (values.help) process.stdout.write(help);
   else {
     if (positionals.length > 1) throw new Error('Expected at most one project root. Use --help.');
-    const outputs = [values.json, values.md].filter((v): v is string => v !== undefined).map(v => path.resolve(v));
-    if (new Set(outputs).size !== outputs.length) throw new Error('JSON and Markdown outputs must have distinct paths.');
+    const outputs = [values.json, values.md, values.html].filter((v): v is string => v !== undefined).map(v => path.resolve(v));
+    if (new Set(outputs).size !== outputs.length) throw new Error('Output files must have distinct paths.');
     for (const file of outputs) if (fs.existsSync(file)) throw new Error(`Output already exists: ${file}`);
     const result = scan(positionals[0] ?? '.', { tsconfig: values.tsconfig, entry: values.entry });
     const json = JSON.stringify(values.compact ? toCompactInventory(result) : result, null, 2) + '\n';
     if (values.json) fs.writeFileSync(values.json, json, { flag: 'wx' });
     if (values.md) fs.writeFileSync(values.md, toMarkdown(result, { compact: values.compact }), { flag: 'wx' });
+    if (values.html) fs.writeFileSync(values.html, toHtml(result), { flag: 'wx' });
     if (!outputs.length) process.stdout.write(json);
     process.stderr.write(`${result.routes.length} routes; ${result.diagnostics.length} diagnostics; ${result.scope.status}.\n`);
     if (values['fail-on-partial'] && result.scope.status === 'partial') process.exitCode = 2;

@@ -12,6 +12,9 @@ Le moteur travaille sur les sources, sans charger les modules JavaScript du proj
 | `markdown.ts` | Rendu détaillé de l’inventaire et sélection du format Markdown. |
 | `markdown-compact.ts` | Présentation par groupes de routes sœurs, avec annotations communes et points à vérifier en tête. |
 | `markdown-text.ts` | Échappement partagé des textes et références source Markdown. |
+| `html.ts` | Sérialisation de l’inventaire et génération du fichier HTML autonome avec politique CSP. |
+| `viewer.ts` | Navigation locale dans la hiérarchie, recherche, disposition du graphe et panneau de détails. |
+| `viewer-style.ts` | Présentation responsive de la carte et de l’inspecteur. |
 | `cli.ts` | Arguments, entrées/sorties et codes de retour. |
 
 La CLI dépend de l'API `scan`/`toMarkdown`. Les rendus complet et compact ne lisent pas le dépôt. `scan()` conserve son contrat complet ; `toCompactInventory()` produit un contrat distinct identifié par `format`, et `toMarkdown()` accepte une option `compact`. La lecture des objets n'invoque aucune fonction métier ; une expression arbitraire est conservée ou signalée, jamais exécutée.
@@ -26,10 +29,12 @@ Les guards conservent leur lieu de déclaration. Le modèle ne confond pas `canA
 
 Les sorties JSON sont validées contre un schéma public versionné. Pour une même version de l'outil, un même environnement de résolution et les mêmes entrées, le rapport est déterministe et sans horodatage variable. Les IDs sont locaux à ce rapport. L'empreinte couvre les entrées du compilateur et la configuration, pas un certificat de validité du code.
 
+Le HTML embarque le JSON échappé et une fonction navigateur compilée, sans requête réseau ni code applicatif exécuté. Le contenu du projet est inséré par `textContent`, jamais par HTML dynamique. Une politique CSP autorise uniquement le script du viewer par son empreinte. La carte garde toutes les occurrences ; seul leur affichage est replié ou filtré. Les diagnostics globaux ne dépendent pas du filtre. Les styles et le script sont des modules inclus dans le package, sans lecture de fichiers à l'exécution de `toHtml()`.
+
 ## Vérification
 
 Tests sociables sur de vrais fichiers temporaires et le compilateur TypeScript réel. Une déclaration minimale de l'API Angular constitue la frontière externe des fixtures. Le cas réel complète ces tests ; le test d'archive vérifie le contrat de distribution depuis un projet consommateur.
 
 ## Évolutions
 
-Les références de navigation formeront des relations distinctes de la hiérarchie des routes. Les parcours navigateur devront préciser leur contexte d'observation. Le rendu HTML réutilisera le modèle ; il ne pilotera pas le moteur. Le partage éventuel de code avec Inventory dépendra des besoins observés, sans extraction préalable d'un framework commun.
+Les références de navigation formeront des relations distinctes de la hiérarchie des routes. Les parcours navigateur devront préciser leur contexte d'observation. Le rendu HTML réutilise le modèle ; il ne pilote pas le moteur. Le partage éventuel de code avec Inventory dépendra des besoins observés, sans extraction préalable d'un framework commun.

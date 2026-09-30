@@ -28,7 +28,8 @@
     "test": "npm run build && node --test test/*.test.mjs",
     "test:package": "node scripts/test-package.mjs",
     "quality": "npm run typecheck && npm test && npm run test:package",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "test:browser": "npm run build && node --test test/browser/*.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -49,6 +50,7 @@
     "typescript": "^6.0.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.4",
     "ajv": "^8.20.0"
   }

@@ -5,3 +5,5 @@ export type { Inventory, RouteRecord, EntryPoint, Diagnostic, Source, Reference,
 export { toCompactInventory } from './compact.js';
 export type { CompactInventory, CompactRoute } from './compact.js';
 export type { MarkdownOptions } from './markdown.js';
+
+export { toHtml } from './html.js';

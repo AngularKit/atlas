@@ -2,7 +2,7 @@
 
 Cartographie et audit de la navigation Angular : routes, écrans et preuves dans le code, pour développeurs et agents IA.
 
-**Prototype en développement, pas encore publié sur npm.** Le premier jalon produit un inventaire statique JSON et Markdown. Il ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
+**Prototype en développement, pas encore publié sur npm.** Le prototype produit un inventaire statique JSON, un rapport Markdown et une carte HTML interactive. Il ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
 
 ## Essayer depuis les sources
 
@@ -28,6 +28,30 @@ Atlas utilise les options `tsConfig` des projets de build dans `angular.json`, p
 `--entry src/app/app.config.ts` limite la découverte des appels d'enregistrement à ce fichier. Le contexte de compilation reste celui du projet ; les avertissements sur les modifications runtime restent visibles.
 
 Sans `--json` ni `--md`, le JSON est écrit sur stdout ; le résumé va sur stderr. Les chemins de sortie sont relatifs au répertoire courant, leurs dossiers doivent exister. Les fichiers existants ne sont pas écrasés.
+
+## Carte interactive
+
+```sh
+node dist/cli.js /chemin/vers/application --html reports/carte.html
+```
+
+Ouvrir `carte.html` dans un navigateur. Le fichier fonctionne hors ligne, sans serveur ni dépendance distante. Il contient l'inventaire complet et ses références source : le partager revient à partager ces informations.
+
+- Les routes racines sont visibles au départ ; les boutons + / − déplient et replient les branches, avec leur nombre de descendants.
+- La recherche porte sur les chemins et noms de composants. Elle révèle les ancêtres des résultats ; sélectionner un résultat conserve le filtre. « Vue d’ensemble » remet la carte à son état initial.
+- Un clic sur un chemin ouvre les composants, guards, resolvers, redirections et sources. Les guards restent associés à leur route de déclaration.
+- Les connexions représentent uniquement la relation parent–enfant, pas les liens de navigation ou les permissions.
+- La carte propose le zoom et le déplacement ; sur mobile les branches se lisent verticalement. Les contrôles sont utilisables au clavier.
+- Les diagnostics restent visibles, y compris les limites du SSG. Les doublons de chemins conservent leurs identités distinctes.
+
+`--html`, `--json` et `--md` peuvent être combinés avec des fichiers distincts. `--compact` s'applique au JSON et au Markdown ; la carte conserve les détails disponibles au clic. `--fail-on-partial` garde le même comportement pour tous les formats.
+
+```js
+import { scan, toHtml } from './dist/index.js';
+import { writeFileSync } from 'node:fs';
+
+writeFileSync('carte.html', toHtml(scan('/chemin/vers/application')));
+```
 
 ## Rapport compact
 
@@ -94,7 +118,7 @@ Un appel `withRoutes` ou `provideServerRouting` de `@angular/ssr` produit `SERVE
 
 Tests, stories, déclarations et dossiers générés connus sont exclus des cibles d'analyse. `excludedFiles` liste les exclusions rencontrées par le compilateur et le tsconfig ; il ne recense pas tous les fichiers ignorés sur disque. Les imports hors de la racine sélectionnée ne sont pas développés comme routes applicatives.
 
-Les liens `routerLink`, `navigate` et `navigateByUrl`, le rapport HTML, les captures navigateur et un éventuel MCP viendront dans des jalons ultérieurs. Aucun score de sécurité ni verdict « route inutilisée » n'est calculé.
+Les liens `routerLink`, `navigate` et `navigateByUrl`, les captures de l’application analysée et un éventuel MCP viendront dans des jalons ultérieurs. Aucun score de sécurité ni verdict « route inutilisée » n'est calculé.
 
 ## API et développement
 
@@ -107,9 +131,11 @@ console.log(toMarkdown(inventory));
 
 ```sh
 npm run quality
+npx playwright install chromium
+npm run test:browser
 ```
 
-La vérification comprend le typage, les tests de fixtures et de CLI, la validation du schéma JSON, puis l'installation hors ligne d'une archive npm dans un répertoire consommateur séparé. Le package installé est testé via sa CLI et son API. La CI exécute ces vérifications sous Node.js 22 et 24.
+La vérification comprend le typage, les tests de fixtures et de CLI, la validation du schéma JSON, puis l'installation hors ligne d'une archive npm dans un répertoire consommateur séparé. Le package installé est testé via sa CLI et son API. La CI exécute ces vérifications sous Node.js 22 et 24, ainsi que les tests Chromium de la carte : branches, recherche, détails, mobile, diagnostics et contenu source hostile. Playwright est une dépendance de développement ; les utilisateurs du package n’ont aucun navigateur à installer pour générer les rapports.
 
 Le prototype utilise TypeScript 6. Son premier essai réel est documenté dans [la validation](docs/validation.md) ; cela ne constitue pas une matrice de compatibilité avec toutes les versions Angular.
 

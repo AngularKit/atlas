@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv';
-import { scan, toMarkdown, toCompactInventory } from '../dist/index.js';
+import { scan, toMarkdown, toCompactInventory, toHtml } from '../dist/index.js';
 
 const cli = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
 const schema = JSON.parse(fs.readFileSync(new URL('../schema/inventory-v1.schema.json', import.meta.url), 'utf8'));
@@ -621,4 +621,27 @@ provideRouter([]);`,
   for(const route of inventory.routes) assert.equal(markdown.split(`| ${route.id} |`).length - 1, 1);
   assert.ok(markdown.includes('## e2 — Carte des routes'));
   assert.ok(markdown.includes('Aucune route détectée pour cet enregistrement.'));
+});
+
+
+test('HTML export embeds the full inventory safely and the CLI preserves output contracts', t => {
+  const root=project(t, {'src/app.ts': `import {provideRouter} from '@angular/router'; provideRouter([{path:'<script>|&',children:getRoutes()}]);`});
+  const inventory=scan(root);
+  const html=toHtml(inventory);
+  assert.equal(toHtml(inventory),html);
+  assert.match(html,/Content-Security-Policy/);
+  const data=html.match(/<script id="inventory" type="application\/json">([^]*?)<\/script>/)[1];
+  assert.ok(!data.includes('<'));
+  assert.deepEqual(JSON.parse(data),inventory);
+  const file=path.join(root,'map.html');
+  const json=path.join(root,'map.json');
+  const run=args=>spawnSync(process.execPath,[cli,root,...args],{encoding:'utf8'});
+  const result=run(['--html',file,'--json',json,'--compact','--fail-on-partial']);
+  assert.equal(result.status,2,result.stderr); assert.equal(result.stdout,'');
+  assert.equal(fs.readFileSync(file,'utf8'),html);
+  assert.equal(JSON.parse(fs.readFileSync(json,'utf8')).format,'compact');
+  assert.equal(run(['--html',file]).status,1);
+  const duplicate=path.join(root,'duplicate');
+  assert.equal(run(['--html',duplicate,'--md',duplicate]).status,1);
+  assert.ok(!fs.existsSync(duplicate));
 });
