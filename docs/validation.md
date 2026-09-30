@@ -62,3 +62,15 @@ Atlas émet désormais `SERVER_RENDERING_NOT_ANALYZED` avec la source de l'enreg
 Les 67 occurrences ajoutées ont été vérifiées contre les chemins attendus établis indépendamment : 9 modules et 58 leçons. Les contrôles portent aussi sur les composants, parents, ordre, resolvers et références source. Les entrées déjà détectées conservent leurs informations et leurs relations parentales ; seuls les IDs et indices décalés par les insertions changent.
 
 La couverture des **déclarations client** de ces deux révisions est validée, sans diagnostic de tableau non résolu. Les seuls diagnostics restants concernent le SSG. Le rapprochement entre route client, politique de rendu et manifeste de prérendu reste un chantier distinct. Les projets analysés n'ont pas été modifiés.
+
+
+## Formats compacts — 30 septembre 2026
+
+Les mêmes inventaires sont rendus avec `--compact`. Les deux sorties JSON valident leur schéma dédié ; le nombre d'occurrences, les IDs, parents, ordre, points d'entrée, chemins, statut, limites et diagnostics sont identiques au rapport complet.
+
+| Cas | JSON complet → compact | Markdown complet → compact |
+|---|---:|---:|
+| Site à prérendu, 31 routes | 32 348 → 11 577 octets | 9 781 → 2 778 octets |
+| Application Nx, 105 routes | 157 743 → 50 434 octets | 42 082 → 8 776 octets |
+
+La réduction provient des références détaillées et listes de fichiers omises, ainsi que de la suppression du tableau qui répétait l'arbre en Markdown. Aucune route ni aucun diagnostic n'est filtré. L'API complète et les sorties CLI sans option conservent leur contrat. Les tests couvrent aussi les chemins inconnus, les redirections dynamiques, les doublons, les enregistrements multiples, l'échappement Markdown et le code de sortie strict.

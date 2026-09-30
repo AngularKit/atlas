@@ -10,7 +10,7 @@ const cache = path.join(root, 'cache');
 try {
   const output = execFileSync(npm, ['pack', '--ignore-scripts', '--json', '--pack-destination', root, '--cache', cache], { encoding: 'utf8' });
   const [packed] = JSON.parse(output);
-  for (const file of ['dist/cli.js', 'dist/index.js', 'dist/index.d.ts', 'schema/inventory-v1.schema.json', 'README.md', 'LICENSE']) {
+  for (const file of ['dist/cli.js', 'dist/index.js', 'dist/index.d.ts', 'schema/inventory-v1.schema.json', 'schema/compact-inventory-v1.schema.json', 'README.md', 'LICENSE']) {
     assert.ok(packed.files.some(f => f.path === file), `Missing packaged file: ${file}`);
   }
   assert.ok(!packed.files.some(f => f.path.startsWith('reports/') || f.path.startsWith('test/')));
@@ -34,10 +34,15 @@ try {
   const report = JSON.parse(json);
   assert.equal(report.routes[0].fullPath, '/packed');
   assert.equal(report.tool.version, packed.version);
+  const compact = JSON.parse(execFileSync(binary, [target, '--compact'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+  assert.equal(compact.format, 'compact');
+  assert.equal(compact.routes[0].fullPath, '/packed');
   fs.writeFileSync(path.join(consumer, 'api.mjs'), `
-    import { scan, toMarkdown } from '@angularkit/atlas';
+    import { scan, toMarkdown, toCompactInventory } from '@angularkit/atlas';
     const inventory = scan(process.argv[2]);
     if (!toMarkdown(inventory).includes('/packed')) process.exit(1);
+    if (toCompactInventory(inventory).routes[0].fullPath !== '/packed') process.exit(1);
+    if (!toMarkdown(inventory, {compact:true}).includes('synthèse')) process.exit(1);
   `);
   execFileSync(process.execPath, ['api.mjs', target], { cwd: consumer, stdio: 'pipe' });
   console.log('Packed package installed offline: executable CLI, API, declarations and schema verified.');

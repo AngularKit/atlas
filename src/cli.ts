@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { scan, toMarkdown } from './index.js';
+import { scan, toMarkdown, toCompactInventory } from './index.js';
 
 const help = `AngularKit Atlas — inventaire statique des routes Angular
 
@@ -12,6 +12,7 @@ Usage: angular-atlas [project-root] [options]
   --entry <file>     Limiter la découverte des registrations à un fichier
   --json <file>     Écrire l'inventaire JSON
   --md <file>       Écrire le rapport Markdown
+  --compact        Produire une synthèse JSON/Markdown sans preuves détaillées
   --fail-on-partial Retourner le code 2 si des branches ne sont pas résolues
   --help            Afficher cette aide
 
@@ -25,7 +26,7 @@ try {
     allowPositionals: true,
     options: {
       tsconfig: { type: 'string' }, entry: { type: 'string' }, json: { type: 'string' }, md: { type: 'string' },
-      help: { type: 'boolean' }, 'fail-on-partial': { type: 'boolean' },
+      help: { type: 'boolean' }, compact: { type: 'boolean' }, 'fail-on-partial': { type: 'boolean' },
     },
   });
   if (values.help) process.stdout.write(help);
@@ -35,9 +36,9 @@ try {
     if (new Set(outputs).size !== outputs.length) throw new Error('JSON and Markdown outputs must have distinct paths.');
     for (const file of outputs) if (fs.existsSync(file)) throw new Error(`Output already exists: ${file}`);
     const result = scan(positionals[0] ?? '.', { tsconfig: values.tsconfig, entry: values.entry });
-    const json = JSON.stringify(result, null, 2) + '\n';
+    const json = JSON.stringify(values.compact ? toCompactInventory(result) : result, null, 2) + '\n';
     if (values.json) fs.writeFileSync(values.json, json, { flag: 'wx' });
-    if (values.md) fs.writeFileSync(values.md, toMarkdown(result), { flag: 'wx' });
+    if (values.md) fs.writeFileSync(values.md, toMarkdown(result, { compact: values.compact }), { flag: 'wx' });
     if (!outputs.length) process.stdout.write(json);
     process.stderr.write(`${result.routes.length} routes; ${result.diagnostics.length} diagnostics; ${result.scope.status}.\n`);
     if (values['fail-on-partial'] && result.scope.status === 'partial') process.exitCode = 2;

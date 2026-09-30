@@ -29,6 +29,28 @@ Atlas utilise les options `tsConfig` des projets de build dans `angular.json`, p
 
 Sans `--json` ni `--md`, le JSON est écrit sur stdout ; le résumé va sur stderr. Les chemins de sortie sont relatifs au répertoire courant, leurs dossiers doivent exister. Les fichiers existants ne sont pas écrasés.
 
+## Rapport compact
+
+Pour une première lecture ou pour transmettre moins de contexte à un agent IA :
+
+```sh
+node dist/cli.js /chemin/vers/application --compact --json reports/resume.json --md reports/resume.md
+```
+
+Le Markdown compact présente un seul arbre : routes, composants, chargement différé, guards déclarés, clés des resolvers et redirections. Il omet le tableau détaillé et les listes de fichiers. Le JSON compact conserve les occurrences, parents, ordre, points d'entrée, chemins, références source des routes et noms ou expressions des guards/resolvers ; il retire les preuves détaillées de chaque référence, les champs vides et les valeurs par défaut (`outlet: primary`, `pathMatch: prefix`, `lazyChildren: false`). Les valeurs inconnues restent `null`.
+
+**Les diagnostics, le statut partiel et les limites restent présents dans les deux formats.** Aucune route n'est regroupée ou supprimée. Sans `--compact`, la sortie détaillée reste inchangée. `--fail-on-partial` fonctionne aussi avec ce format.
+
+Le JSON compact est identifié par `format: "compact"`, avec son [schéma dédié](schema/compact-inventory-v1.schema.json). Il ne remplace pas le contrat complet retourné par `scan()`.
+
+```js
+import { scan, toCompactInventory, toMarkdown } from './dist/index.js';
+
+const inventory = scan('/chemin/vers/application');
+const summary = toCompactInventory(inventory);
+const markdown = toMarkdown(inventory, { compact: true });
+```
+
 ## Informations produites
 
 - Enregistrements `provideRouter` et `RouterModule.forRoot`, y compris les imports renommés.

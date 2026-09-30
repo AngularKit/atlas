@@ -1,0 +1,343 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/AngularKit/atlas/schema/compact-inventory-v1.schema.json",
+  "title": "AngularKit Atlas compact route inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "format",
+    "tool",
+    "project",
+    "scope",
+    "entryPoints",
+    "routes",
+    "diagnostics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "typescriptVersion"
+      ],
+      "properties": {
+        "name": {
+          "const": "@angularkit/atlas"
+        },
+        "version": {
+          "type": "string"
+        },
+        "typescriptVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tsconfig",
+        "fingerprint",
+        "entryFilter"
+      ],
+      "properties": {
+        "tsconfig": {
+          "type": "string"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "entryFilter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "limitations"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "static",
+            "partial"
+          ]
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "entryPoints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/entry"
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/route"
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/diagnostic"
+      }
+    },
+    "format": {
+      "const": "compact"
+    }
+  },
+  "definitions": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "line",
+        "column"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "nullableSource": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/source"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "provideRouter",
+            "RouterModule.forRoot"
+          ]
+        },
+        "source": {
+          "$ref": "#/definitions/source"
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entryPointId",
+        "parentId",
+        "order",
+        "source",
+        "path",
+        "fullPath",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "entryPointId": {
+          "type": "string"
+        },
+        "parentId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fullPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pathMatch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outlet": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "screen",
+            "redirect",
+            "container",
+            "unknown"
+          ]
+        },
+        "component": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "loading"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "loading": {
+              "enum": [
+                "eager",
+                "lazy"
+              ]
+            }
+          }
+        },
+        "redirect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "target",
+            "expression"
+          ],
+          "properties": {
+            "target": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "expression": {
+              "type": "string"
+            }
+          }
+        },
+        "guards": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "canActivate": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "canActivateChild": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "canMatch": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "canDeactivate": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "canLoad": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "resolvers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "lazyChildren": {
+          "const": true
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "source",
+        "routeId"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/definitions/nullableSource"
+        },
+        "routeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

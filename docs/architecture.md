@@ -8,10 +8,11 @@ Le moteur travaille sur les sources, sans charger les modules JavaScript du proj
 | `static.ts` | Lecture limitée des constantes, tableaux, objets et imports différés ; diagnostics sur les formes non prises en charge. |
 | `scan.ts` | Reconnaissance des enregistrements Angular et construction du graphe de routes avec preuves. |
 | `model.ts` | Contrat public de l'inventaire et des options. |
+| `compact.ts` | Projection légère du modèle complet, sans suppression de routes ni de diagnostics. |
 | `markdown.ts` | Rendu du même inventaire pour la lecture humaine. |
 | `cli.ts` | Arguments, entrées/sorties et codes de retour. |
 
-La CLI dépend de l'API `scan`/`toMarkdown`. Le rendu ne lit pas le dépôt. La lecture des objets n'invoque aucune fonction métier ; une expression arbitraire est conservée ou signalée, jamais exécutée.
+La CLI dépend de l'API `scan`/`toMarkdown`. Les rendus complet et compact ne lisent pas le dépôt. `scan()` conserve son contrat complet ; `toCompactInventory()` produit un contrat distinct identifié par `format`, et `toMarkdown()` accepte une option `compact`. La lecture des objets n'invoque aucune fonction métier ; une expression arbitraire est conservée ou signalée, jamais exécutée.
 
 Le lecteur statique borne la profondeur et le nombre d'opérations. Le graphe borne le nombre d'occurrences de routes. La réutilisation d'un même tableau dans plusieurs branches est valide ; seul un retour vers un ancêtre constitue un cycle.
 

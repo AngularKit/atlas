@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv';
-import { scan, toMarkdown } from '../dist/index.js';
+import { scan, toMarkdown, toCompactInventory } from '../dist/index.js';
 
 const cli = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
 const schema = JSON.parse(fs.readFileSync(new URL('../schema/inventory-v1.schema.json', import.meta.url), 'utf8'));
@@ -531,4 +531,68 @@ provideRouter([...recursive, ...['a'].map(id=>({path: \`\${unknown}-\${id}\`}))]
   assert.equal(result.routes[0].fullPath, null);
   assert.ok(result.diagnostics.some(d=>d.code==='CYCLIC_REFERENCE'));
   assert.ok(result.diagnostics.some(d=>d.code==='UNRESOLVED_VALUE'));
+});
+
+
+test('compact projection retains route identity, uncertainty and diagnostics without repeated evidence', t => {
+  const root = project(t, {'src/app.ts': `import {provideRouter} from '@angular/router';
+import {Home} from './pages';
+const auth=()=>true; const resolveItem=()=>1;
+provideRouter([{path:'',component:Home,canActivate:[auth],resolve:{item:resolveItem},children:[{path:'same'},{path:'same'},{path:'chat',outlet:'aside'},{path:computePath()}]}, {path:'old',redirectTo:'/',pathMatch:'full'}, {path:'dynamic',redirectTo:()=>'/'}]);
+provideRouter([{path:'same'}]);`});
+  const full = scan(root);
+  const before = structuredClone(full);
+  const compact = toCompactInventory(full);
+  const schema = JSON.parse(fs.readFileSync(new URL('../schema/compact-inventory-v1.schema.json', import.meta.url), 'utf8'));
+  const validateCompact = new Ajv({allErrors:true}).compile(schema);
+  assert.ok(validateCompact(compact), JSON.stringify(validateCompact.errors));
+  assert.equal(compact.format,'compact');
+  assert.deepEqual(compact.scope,full.scope);
+  assert.deepEqual(compact.diagnostics,full.diagnostics);
+  assert.deepEqual(compact.routes.map(r=>[r.id,r.parentId,r.order,r.entryPointId,r.path,r.fullPath]),full.routes.map(r=>[r.id,r.parentId,r.order,r.entryPointId,r.path,r.fullPath]));
+  assert.deepEqual(compact.routes[0].guards,{canActivate:['auth']});
+  assert.deepEqual(compact.routes[0].resolvers,{item:'resolveItem'});
+  assert.deepEqual(compact.routes[0].component,{name:'Home',loading:'eager'});
+  assert.equal(compact.routes[3].outlet,'aside');
+  assert.equal(compact.routes[4].fullPath,null);
+  assert.equal(compact.routes[5].pathMatch,'full');
+  assert.equal(compact.routes[6].redirect.target,null);
+  assert.ok(!('files' in compact.project));
+  assert.ok(!('guards' in compact.routes[1]));
+  assert.ok(!('declaration' in compact.routes[0].component));
+  const md=toMarkdown(full,{compact:true});
+  assert.ok(md.includes('synthèse des routes'));
+  assert.ok(md.includes('canActivate: auth'));
+  assert.ok(md.includes('resolvers: item'));
+  assert.ok(md.includes('→ /'));
+  assert.ok(md.includes('outlet: aside'));
+  for(const route of full.routes) assert.ok(md.includes(`(${route.id})`));
+  assert.ok(md.includes('UNRESOLVED&#95;VALUE'));
+  assert.ok(md.includes('Périmètre et limites'));
+  assert.ok(!md.includes('### Détail'));
+  assert.ok(!md.includes('### Fichiers analysés'));
+  assert.ok(toMarkdown(full).includes('### Détail'));
+  compact.scope.limitations.push('consumer edit');
+  compact.diagnostics[0].message='consumer edit';
+  assert.deepEqual(full,before);
+});
+
+test('compact CLI supports JSON, Markdown and stdout while preserving partial exit status and escaping', t => {
+  const root=project(t,{'src/app.ts':`import {provideRouter} from '@angular/router'; provideRouter([{path:'<script>|[x]',redirectTo:computeRedirect()}]);`});
+  const run=args=>spawnSync(process.execPath,[cli,root,...args],{encoding:'utf8'});
+  const normal=run([]);
+  assert.ok(!('format' in JSON.parse(normal.stdout)));
+  const stdout=run(['--compact','--fail-on-partial']);
+  assert.equal(stdout.status,2,stdout.stderr);
+  assert.equal(JSON.parse(stdout.stdout).format,'compact');
+  const json=path.join(root,'compact.json'), md=path.join(root,'compact.md');
+  const files=run(['--compact','--json',json,'--md',md,'--fail-on-partial']);
+  assert.equal(files.status,2,files.stderr);
+  assert.equal(files.stdout,'');
+  assert.deepEqual(JSON.parse(fs.readFileSync(json,'utf8')),JSON.parse(stdout.stdout));
+  const markdown=fs.readFileSync(md,'utf8');
+  assert.ok(markdown.includes('&lt;script&gt;&#124;&#91;x&#93;'));
+  assert.ok(!markdown.includes('<script>'));
+  assert.ok(markdown.includes('UNRESOLVED&#95;VALUE'));
+  assert.equal(run(['--compact','--json',json]).status,1);
 });
