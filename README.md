@@ -2,7 +2,30 @@
 
 Cartographie et audit de la navigation Angular : routes, écrans et preuves dans le code, pour développeurs et agents IA.
 
-**Prototype en développement, pas encore publié sur npm.** Le prototype produit un inventaire statique JSON, un rapport Markdown et une carte HTML interactive. Il ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
+**Version 0.1.0 en préparation, pas encore publiée sur npm.** La carte HTML interactive sert à explorer les routes ; le JSON détaillé ou compact alimente les outils et agents IA. Un rapport Markdown est également disponible. Atlas ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
+
+## Utilisation npm prévue
+
+Ces commandes deviendront disponibles après publication de la `0.1.0` :
+
+```sh
+npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/application --html carte.html
+```
+
+Pour appeler l'API depuis un outil Node.js en ESM :
+
+```sh
+npm install --save-dev @angularkit/atlas@0.1.0
+```
+
+```js
+import { scan, toHtml } from '@angularkit/atlas';
+import { writeFileSync } from 'node:fs';
+
+writeFileSync('carte.html', toHtml(scan('/chemin/vers/application')));
+```
+
+Atlas s'exécute sous Node.js ; aucune intégration au runtime Angular n'est nécessaire. Les types TypeScript sont inclus. La distribution est ESM, sans entrée CommonJS dédiée.
 
 ## Essayer depuis les sources
 
@@ -14,7 +37,7 @@ cd atlas
 npm ci
 npm run build
 mkdir -p reports
-node dist/cli.js /chemin/vers/application --json reports/routes.json --md reports/routes.md
+node dist/cli.js /chemin/vers/application --html reports/carte.html --compact --json reports/routes.json
 ```
 
 Pour un monorepo ou une sélection explicite :
@@ -27,7 +50,7 @@ Atlas utilise les options `tsConfig` des projets de build dans `angular.json`, p
 
 `--entry src/app/app.config.ts` limite la découverte des appels d'enregistrement à ce fichier. Le contexte de compilation reste celui du projet ; les avertissements sur les modifications runtime restent visibles.
 
-Sans `--json` ni `--md`, le JSON est écrit sur stdout ; le résumé va sur stderr. Les chemins de sortie sont relatifs au répertoire courant, leurs dossiers doivent exister. Les fichiers existants ne sont pas écrasés.
+Sans `--json`, `--md` ni `--html`, le JSON est écrit sur stdout ; le résumé va sur stderr. Les chemins de sortie sont relatifs au répertoire courant, leurs dossiers doivent exister. Les fichiers existants ne sont pas écrasés.
 
 ## Carte interactive
 
@@ -137,6 +160,6 @@ npm run test:browser
 
 La vérification comprend le typage, les tests de fixtures et de CLI, la validation du schéma JSON, puis l'installation hors ligne d'une archive npm dans un répertoire consommateur séparé. Le package installé est testé via sa CLI et son API. La CI exécute ces vérifications sous Node.js 22 et 24, ainsi que les tests Chromium de la carte : branches, recherche, détails, mobile, diagnostics et contenu source hostile. Playwright est une dépendance de développement ; les utilisateurs du package n’ont aucun navigateur à installer pour générer les rapports.
 
-Le prototype utilise TypeScript 6. Son premier essai réel est documenté dans [la validation](docs/validation.md) ; cela ne constitue pas une matrice de compatibilité avec toutes les versions Angular.
+Le prototype utilise TypeScript 6. Son premier essai réel est documenté dans [la validation](https://github.com/AngularKit/atlas/blob/main/docs/validation.md) ; cela ne constitue pas une matrice de compatibilité avec toutes les versions Angular.
 
-Voir [l'architecture](docs/architecture.md) et [le premier chantier](https://github.com/AngularKit/atlas/issues/1).
+Voir [l'architecture](https://github.com/AngularKit/atlas/blob/main/docs/architecture.md), [les notes de version](CHANGELOG.md), [la procédure de publication](https://github.com/AngularKit/atlas/blob/main/docs/releasing.md) et [le premier chantier](https://github.com/AngularKit/atlas/issues/1).

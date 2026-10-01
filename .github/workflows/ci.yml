@@ -21,3 +21,16 @@ jobs:
       - run: npm run quality
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - name: Pack npm release candidate
+        if: matrix.node == 24
+        run: npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP" --json > "$RUNNER_TEMP/atlas-package.json"
+      - name: Upload npm archive and integrity manifest
+        if: matrix.node == 24
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-npm-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/angularkit-atlas-*.tgz
+            ${{ runner.temp }}/atlas-package.json
+          if-no-files-found: error
+          retention-days: 14

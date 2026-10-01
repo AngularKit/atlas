@@ -10,10 +10,12 @@ const cache = path.join(root, 'cache');
 try {
   const output = execFileSync(npm, ['pack', '--ignore-scripts', '--json', '--pack-destination', root, '--cache', cache], { encoding: 'utf8' });
   const [packed] = JSON.parse(output);
-  for (const file of ['dist/cli.js', 'dist/index.js', 'dist/index.d.ts', 'dist/html.js', 'dist/viewer.js', 'dist/viewer-style.js', 'schema/inventory-v1.schema.json', 'schema/compact-inventory-v1.schema.json', 'README.md', 'LICENSE']) {
+  for (const file of ['dist/cli.js', 'dist/index.js', 'dist/index.d.ts', 'dist/html.js', 'dist/viewer.js', 'dist/viewer-style.js', 'schema/inventory-v1.schema.json', 'schema/compact-inventory-v1.schema.json', 'README.md', 'CHANGELOG.md', 'LICENSE']) {
     assert.ok(packed.files.some(f => f.path === file), `Missing packaged file: ${file}`);
   }
-  assert.ok(!packed.files.some(f => f.path.startsWith('reports/') || f.path.startsWith('test/')));
+  for (const file of packed.files) {
+    assert.match(file.path, /^(?:dist\/[\w-]+\.(?:js|d\.ts)|schema\/(?:compact-)?inventory-v1\.schema\.json|package\.json|README\.md|CHANGELOG\.md|LICENSE)$/, `Unexpected packaged file: ${file.path}`);
+  }
   const consumer = path.join(root, 'consumer');
   fs.mkdirSync(consumer);
   fs.writeFileSync(path.join(consumer, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
@@ -49,7 +51,24 @@ try {
     if (!toMarkdown(inventory, {compact:true}).includes('Cartographie des routes')) process.exit(1);
   `);
   execFileSync(process.execPath, ['api.mjs', target], { cwd: consumer, stdio: 'pipe' });
-  console.log('Packed package installed offline: executable CLI, API, declarations and schema verified.');
+  fs.writeFileSync(path.join(consumer, 'api.ts'), `
+    import { scan, toMarkdown, toCompactInventory, toHtml } from '@angularkit/atlas';
+    import type { Inventory, CompactInventory, ScanOptions, MarkdownOptions, RouteRecord } from '@angularkit/atlas';
+    const options: ScanOptions = { tsconfig: 'tsconfig.json' };
+    const inventory: Inventory = scan('.', options);
+    const compact: CompactInventory = toCompactInventory(inventory);
+    const markdownOptions: MarkdownOptions = { compact: true };
+    const markdown: string = toMarkdown(inventory, markdownOptions);
+    const html: string = toHtml(inventory);
+    const routes: RouteRecord[] = inventory.routes;
+    void [compact, markdown, html, routes];
+  `);
+  fs.writeFileSync(path.join(consumer, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: { strict: true, noEmit: true, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', types: [], lib: ['ES2022'], skipLibCheck: false },
+    files: ['api.ts'],
+  }));
+  execFileSync(process.execPath, ['node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], { cwd: consumer, stdio: 'pipe' });
+  console.log('Packed package installed offline: executable CLI, API, TypeScript consumer compilation and schemas verified.');
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
