@@ -30,7 +30,8 @@
     "test:package": "node scripts/test-package.mjs",
     "quality": "npm run typecheck && npm test && npm run test:package",
     "prepack": "npm run build",
-    "test:browser": "npm run build && node --test test/browser/*.test.mjs"
+    "test:browser": "npm run build && node --test test/browser/*.test.mjs",
+    "benchmark:viewer": "npm run build && node scripts/benchmark-viewer.mjs"
   },
   "repository": {
     "type": "git",

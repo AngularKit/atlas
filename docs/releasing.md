@@ -1,6 +1,6 @@
 # Préparer et publier une version
 
-La `0.1.0` est une version candidate, pas une publication npm. La validation visuelle de la carte ne remplace pas la relecture technique de la PR. Fusion et publication demandent l'accord explicite de Gaëtan après cette relecture. La CI ne publie rien et aucune fusion automatique n'est configurée par ce chantier.
+La validation visuelle de la carte ne remplace pas la relecture technique de la PR. Fusion et publication demandent l'accord explicite de Gaëtan après cette relecture. La CI ne publie rien et aucune fusion automatique n'est configurée par ce chantier.
 
 ## Archive à relire
 
@@ -23,7 +23,7 @@ npm run test:browser
 npm pack --ignore-scripts --json > atlas-package.json
 ```
 
-Avant une release suivante, mettre à jour `package.json`, `package-lock.json` et les notes de version. Le moteur lit la version directement dans le `package.json` installé. Le test de l'archive vérifie que la version du rapport correspond à celle du package. Lors de la préparation finale de la première publication, remplacer les mentions « en préparation / pas encore publiée » du README et du changelog par les informations de release, puis faire valider cette révision.
+Avant une release suivante, mettre à jour `package.json`, `package-lock.json` et les notes de version. Le moteur lit la version directement dans le `package.json` installé. Le test de l'archive vérifie que la version du rapport correspond à celle du package. Finaliser les informations du README et du changelog dans la révision préparée pour publication.
 
 ## Première publication
 

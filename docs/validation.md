@@ -83,3 +83,17 @@ Le même inventaire produit un fichier autonome avec branches repliables, recher
 Tests Chromium sur fichiers locaux : dépliage au clavier, recherche d'une route cachée, conservation du filtre, contexte parent, guards déclarés uniquement, sources et resolvers, doublons, retour à la vue d'ensemble, zoom, navigation depuis un diagnostic, état vide, mobile 390 × 844 et contenu source contenant des balises/scripts. Les scénarios ne déclenchent aucune requête réseau externe. Le test du package installé vérifie aussi la génération HTML par CLI et API.
 
 Les inventaires réels de 105 et 31 routes servent d'aperçus privés ; leur contenu n'est pas ajouté au dépôt public. L'analyse SSG reste partielle et le diagnostic est visible dès l'ouverture.
+
+
+## Viewer : contrôle à 10 000 routes — 1er octobre 2026
+
+Mesure locale sous macOS arm64, Node.js v24.18.0, Chromium 153.0.8010.12, sans interface graphique, viewport 1440 × 950. Deux inventaires synthétiques de 10 000 routes et 10 000 diagnostics, trois ouvertures par forme : 100 groupes contenant chacun 99 enfants, puis 10 000 routes sœurs visibles dès le départ.
+
+| Forme | Ouverture et deux frames | Recherche exacte | Sélection et détails |
+|---|---:|---:|---:|
+| Groupes repliés | 89–159 ms | 38–48 ms | 75–98 ms |
+| 10 000 routes visibles | 455–505 ms | 60–62 ms | 72–76 ms |
+
+Les durées incluent les commandes Playwright et deux frames navigateur. Les fichiers HTML mesurent environ 4,6 Mo. Chaque essai vérifie le nombre de routes et de marqueurs, un résultat de recherche unique, le diagnostic de la route sélectionnée, l'absence d'erreur JavaScript et de requête réseau. Reproduction : `npm run benchmark:viewer`, après installation de Chromium ; résultats dans `reports/benchmark-viewer-10000.json`.
+
+Ce contrôle couvre ces deux formes synthétiques sur cette machine. Il ne mesure ni un parcours complet ni les performances sur mobile ; ces durées ne sont pas des seuils garantis. Le script reste hors du package npm et de la CI, sans seuil temporel fragile.

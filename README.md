@@ -2,11 +2,11 @@
 
 Cartographie et audit de la navigation Angular : routes, écrans et preuves dans le code, pour développeurs et agents IA.
 
-**Version 0.1.0 en préparation, pas encore publiée sur npm.** La carte HTML interactive sert à explorer les routes ; le JSON détaillé ou compact alimente les outils et agents IA. Un rapport Markdown est également disponible. Atlas ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
+La carte HTML interactive sert à explorer les routes ; le JSON détaillé ou compact alimente les outils et agents IA. Un rapport Markdown est également disponible. Atlas ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
 
-## Utilisation npm prévue
+## Utilisation npm
 
-Ces commandes deviendront disponibles après publication de la `0.1.0` :
+Générer la carte avec la version `0.1.0` :
 
 ```sh
 npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/application --html carte.html
