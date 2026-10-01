@@ -1,5 +1,7 @@
 # Publier une version sur npm
 
+**Français** · [English](releasing.en.md)
+
 `@angularkit/atlas@0.1.0` a été publié le 1er octobre 2026 depuis l'archive de la CI. Les versions suivantes sont publiées automatiquement par `.github/workflows/publish.yml` lorsqu'un tag stable `vX.Y.Z` est poussé. Le tag constitue la décision de publier, après relecture et fusion de la PR dans `main` ; un push ordinaire ou une pull request ne publie rien.
 
 ## Configuration initiale sur npm
@@ -26,7 +28,7 @@ Dans une branche issue de `main`, mettre à jour la version sans créer de tag :
 npm version patch --no-git-tag-version
 ```
 
-Choisir `minor` ou `major` selon les changements. Mettre à jour le changelog et les exemples versionnés du README. Ouvrir une PR vers `main` et terminer sa relecture technique avant fusion. Ne pas créer une nouvelle version uniquement pour tester l'authentification.
+Choisir `minor` ou `major` selon les changements. Mettre à jour le changelog et les exemples versionnés des deux README. Ouvrir une PR vers `main` et terminer sa relecture technique avant fusion. Ne pas créer une nouvelle version uniquement pour tester l'authentification.
 
 Après fusion et validation de la release, depuis un checkout propre de `main` à jour :
 
@@ -49,7 +51,7 @@ Le job Node.js 24 produit l'artefact `atlas-npm-<SHA>` contenant l'archive et `a
 
 Après publication, un contrôle attend jusqu'à environ dix minutes la disponibilité du registre, compare l'intégrité, installe le package dans un consommateur vierge et teste sa CLI, son API et la génération HTML. Une erreur de téléchargement ou d'intégrité fait échouer le job. L'attestation de provenance est consultable sur npm.
 
-Les archives ne contiennent pas les rapports privés ni les sources des applications analysées. Le contrôle de distribution existant vérifie la liste autorisée et un consommateur TypeScript strict.
+Les archives ne contiennent pas les rapports privés ni les sources des applications analysées. Le contrôle de distribution existant vérifie la liste autorisée et un consommateur TypeScript strict. Les deux guides utilisateur sont inclus dans le package.
 
 ## Si le workflow échoue
 

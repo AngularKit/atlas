@@ -10,11 +10,11 @@ const cache = path.join(root, 'cache');
 try {
   const output = execFileSync(npm, ['pack', '--ignore-scripts', '--json', '--pack-destination', root, '--cache', cache], { encoding: 'utf8' });
   const [packed] = JSON.parse(output);
-  for (const file of ['dist/cli.js', 'dist/index.js', 'dist/index.d.ts', 'dist/html.js', 'dist/viewer.js', 'dist/viewer-style.js', 'schema/inventory-v1.schema.json', 'schema/compact-inventory-v1.schema.json', 'README.md', 'CHANGELOG.md', 'LICENSE']) {
+  for (const file of ['dist/cli.js', 'dist/index.js', 'dist/index.d.ts', 'dist/html.js', 'dist/viewer.js', 'dist/viewer-style.js', 'schema/inventory-v1.schema.json', 'schema/compact-inventory-v1.schema.json', 'README.md', 'README.en.md', 'CHANGELOG.md', 'LICENSE']) {
     assert.ok(packed.files.some(f => f.path === file), `Missing packaged file: ${file}`);
   }
   for (const file of packed.files) {
-    assert.match(file.path, /^(?:dist\/[\w-]+\.(?:js|d\.ts)|schema\/(?:compact-)?inventory-v1\.schema\.json|package\.json|README\.md|CHANGELOG\.md|LICENSE)$/, `Unexpected packaged file: ${file.path}`);
+    assert.match(file.path, /^(?:dist\/[\w-]+\.(?:js|d\.ts)|schema\/(?:compact-)?inventory-v1\.schema\.json|package\.json|README(?:\.en)?\.md|CHANGELOG\.md|LICENSE)$/, `Unexpected packaged file: ${file.path}`);
   }
   const consumer = path.join(root, 'consumer');
   fs.mkdirSync(consumer);

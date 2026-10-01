@@ -1,12 +1,22 @@
 # AngularKit Atlas
 
+**Français** · [English](https://github.com/AngularKit/atlas/blob/main/README.en.md)
+
 Cartographie et audit de la navigation Angular : routes, écrans et preuves dans le code, pour développeurs et agents IA.
 
 La carte HTML interactive sert à explorer les routes ; le JSON détaillé ou compact alimente les outils et agents IA. Un rapport Markdown est également disponible. Atlas ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
 
 ## Utilisation npm
 
-Générer la carte avec la version `0.1.0` :
+Prérequis : **Node.js 22 minimum** (CI sur 22 et 24), les sources du projet Angular et ses dépendances installées. Aucune modification de l’application, aucun serveur Angular et aucun navigateur automatisé ne sont nécessaires.
+
+Depuis le dossier de votre application, générer une première carte :
+
+```sh
+npx --package=@angularkit/atlas@0.1.0 angular-atlas . --html carte.html
+```
+
+Ouvrir ensuite `carte.html` dans un navigateur. Pour analyser un autre dossier :
 
 ```sh
 npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/application --html carte.html
@@ -27,23 +37,12 @@ writeFileSync('carte.html', toHtml(scan('/chemin/vers/application')));
 
 Atlas s'exécute sous Node.js ; aucune intégration au runtime Angular n'est nécessaire. Les types TypeScript sont inclus. Le compilateur TypeScript est une dépendance runtime nécessaire à l’analyse : prévoir environ 20 Mo supplémentaires sur disque, en plus du package Atlas. La distribution est ESM, sans entrée CommonJS dédiée.
 
-## Essayer depuis les sources
-
-Prérequis : Node.js 22 ou 24. Installer les dépendances du projet Angular pour permettre la résolution de ses imports.
-
-```sh
-git clone https://github.com/AngularKit/atlas.git
-cd atlas
-npm ci
-npm run build
-mkdir -p reports
-node dist/cli.js /chemin/vers/application --html reports/carte.html --compact --json reports/routes.json
-```
+## Choisir l’application à analyser
 
 Pour un monorepo ou une sélection explicite :
 
 ```sh
-node dist/cli.js /chemin/vers/workspace --tsconfig apps/shop/tsconfig.app.json
+npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/workspace --tsconfig apps/shop/tsconfig.app.json
 ```
 
 Atlas utilise les options `tsConfig` des projets de build dans `angular.json`, puis `tsconfig.app.json`, puis `tsconfig.json`. Plusieurs applications détectées demandent un `--tsconfig` explicite. Les configurations solution à références de projets demandent de sélectionner le tsconfig d'une application. Pour Nx et les configurations non standard, préciser ce chemin.
@@ -52,10 +51,35 @@ Atlas utilise les options `tsConfig` des projets de build dans `angular.json`, p
 
 Sans `--json`, `--md` ni `--html`, le JSON est écrit sur stdout ; le résumé va sur stderr. Les chemins de sortie sont relatifs au répertoire courant, leurs dossiers doivent exister. Les fichiers existants ne sont pas écrasés.
 
+## Référence CLI
+
+`angular-atlas [racine-du-projet] [options]` utilise le dossier courant si la racine est omise. `--tsconfig` et `--entry` sont relatifs à cette racine ; les chemins de sortie sont relatifs au dossier depuis lequel la commande est lancée.
+
+| Option | Usage |
+|---|---|
+| `--tsconfig <fichier>` | Choisir le tsconfig de l’application, notamment pour Nx et les monorepos. |
+| `--entry <fichier>` | Limiter la découverte des enregistrements du routeur à un fichier. |
+| `--html <fichier>` | Générer une carte HTML autonome. |
+| `--json <fichier>` | Enregistrer l’inventaire JSON. |
+| `--md <fichier>` | Enregistrer le rapport Markdown. |
+| `--compact` | Alléger les sorties JSON et Markdown ; la carte reste détaillée. |
+| `--fail-on-partial` | Retourner le code `2` pour une analyse partielle, après écriture des rapports. |
+| `--help` | Afficher l’aide. |
+
+Pour intégrer un inventaire à votre propre CI :
+
+```sh
+npx --package=@angularkit/atlas@0.1.0 angular-atlas . --compact --fail-on-partial --json routes.json
+```
+
+Cette commande échoue aussi lorsqu’une limite connue, par exemple le SSG, rend le rapport partiel. Utiliser `--fail-on-partial` seulement si ce comportement est souhaité.
+
+La documentation est disponible en français et en anglais. Dans la version actuelle, l’aide CLI, la carte et les rapports Markdown sont principalement en français ; il n’y a pas encore d’option de langue. Les clés JSON restent identiques dans les deux guides.
+
 ## Carte interactive
 
 ```sh
-node dist/cli.js /chemin/vers/application --html reports/carte.html
+npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/application --html carte.html
 ```
 
 Ouvrir `carte.html` dans un navigateur. Le fichier fonctionne hors ligne, sans serveur ni dépendance distante. Il contient l'inventaire complet et ses références source : le partager revient à partager ces informations.
@@ -70,7 +94,7 @@ Ouvrir `carte.html` dans un navigateur. Le fichier fonctionne hors ligne, sans s
 `--html`, `--json` et `--md` peuvent être combinés avec des fichiers distincts. `--compact` s'applique au JSON et au Markdown ; la carte conserve les détails disponibles au clic. `--fail-on-partial` garde le même comportement pour tous les formats.
 
 ```js
-import { scan, toHtml } from './dist/index.js';
+import { scan, toHtml } from '@angularkit/atlas';
 import { writeFileSync } from 'node:fs';
 
 writeFileSync('carte.html', toHtml(scan('/chemin/vers/application')));
@@ -78,10 +102,11 @@ writeFileSync('carte.html', toHtml(scan('/chemin/vers/application')));
 
 ## Rapport compact
 
-Pour une première lecture ou pour transmettre moins de contexte à un agent IA :
+Pour une première lecture ou pour transmettre moins de contexte à un agent IA, créer d’abord le dossier de sortie :
 
 ```sh
-node dist/cli.js /chemin/vers/application --compact --json reports/resume.json --md reports/resume.md
+mkdir -p reports
+npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/application --compact --json reports/resume.json --md reports/resume.md
 ```
 
 Le Markdown compact commence par les points à vérifier, puis présente une section par parent avec de petits tableaux de chemins relatifs, composants et repères. Les composants communs sont indiqués une fois au-dessus du tableau ; chargements différés, guards et clés de resolvers sont regroupés sous les routes concernées. Deux déclarations avec le même chemin restent distinctes. Les listes de fichiers et les preuves détaillées sont omises. Le JSON compact conserve les occurrences, parents, ordre, points d'entrée, chemins, références source des routes et noms ou expressions des guards/resolvers ; il retire les preuves détaillées de chaque référence, les champs vides et les valeurs par défaut (`outlet: primary`, `pathMatch: prefix`, `lazyChildren: false`). Les valeurs inconnues restent `null`.
@@ -91,7 +116,7 @@ Le Markdown compact commence par les points à vérifier, puis présente une sec
 Le JSON compact est identifié par `format: "compact"`, avec son [schéma dédié](schema/compact-inventory-v1.schema.json). Il ne remplace pas le contrat complet retourné par `scan()`.
 
 ```js
-import { scan, toCompactInventory, toMarkdown } from './dist/index.js';
+import { scan, toCompactInventory, toMarkdown } from '@angularkit/atlas';
 
 const inventory = scan('/chemin/vers/application');
 const summary = toCompactInventory(inventory);
@@ -143,16 +168,43 @@ Tests, stories, déclarations et dossiers générés connus sont exclus des cibl
 
 Les liens `routerLink`, `navigate` et `navigateByUrl`, les captures de l’application analysée et un éventuel MCP viendront dans des jalons ultérieurs. Aucun score de sécurité ni verdict « route inutilisée » n'est calculé.
 
+## Dépannage
+
+| Situation | Action |
+|---|---|
+| `Several applications found` ou `Solution tsconfig` | Passer `--tsconfig` avec la configuration d’une application, plutôt qu’une configuration de solution. |
+| Aucune route ou rapport `partial` | Lire `diagnostics`, vérifier la sélection du projet, ses dépendances et l’enregistrement `provideRouter` ou `RouterModule.forRoot`. Un tableau isolé ne suffit pas. |
+| `Output already exists` | Choisir un nouveau nom ou supprimer explicitement l’ancien rapport. Il n’existe pas d’option `--force`. |
+| Dossier de sortie introuvable | Créer le dossier avant de lancer la commande. |
+| `SERVER_RENDERING_NOT_ANALYZED` | Les routes client restent dans le rapport ; Atlas n’énumère pas les pages prérendues. |
+| Erreur de lecture ou de syntaxe | Corriger le fichier ou le tsconfig indiqué ; Atlas ne retourne pas de rapport valide après une erreur fatale. |
+
+Les noms de composants affichés proviennent des déclarations ou expressions de votre code. Atlas n’invente pas de noms d’écrans. Pour signaler un problème, ouvrir une [issue](https://github.com/AngularKit/atlas/issues) avec la version Node/Atlas, la commande, le diagnostic et un petit exemple de routes reproductible, en retirant les sources privées.
+
 ## API et développement
 
+L’API est synchrone. `scan(root, { tsconfig, entry })` retourne l’inventaire complet et lève une erreur pour les échecs fatals. Les fonctions de rendu prennent cet inventaire ; elles n’écrivent pas les fichiers elles-mêmes.
+
+| Export | Résultat |
+|---|---|
+| `scan(root, options?)` | `Inventory` complet avec routes, diagnostics et preuves. |
+| `toHtml(inventory)` | Chaîne HTML autonome. |
+| `toMarkdown(inventory, { compact: true }?)` | Chaîne Markdown, détaillée par défaut. |
+| `toCompactInventory(inventory)` | Objet JSON compact distinct du contrat complet. |
+
 ```js
-import { scan, toMarkdown } from './dist/index.js';
+import { scan, toMarkdown } from '@angularkit/atlas';
 
 const inventory = scan('/chemin/vers/application', { tsconfig: 'tsconfig.app.json' });
 console.log(toMarkdown(inventory));
 ```
 
+Pour contribuer depuis les sources :
+
 ```sh
+git clone https://github.com/AngularKit/atlas.git
+cd atlas
+npm ci
 npm run quality
 npx playwright install chromium
 npm run test:browser
