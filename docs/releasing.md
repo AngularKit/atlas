@@ -1,54 +1,62 @@
-# Préparer et publier une version
+# Publier une version sur npm
 
-La validation visuelle de la carte ne remplace pas la relecture technique de la PR. Fusion et publication demandent l'accord explicite de Gaëtan après cette relecture. La CI ne publie rien et aucune fusion automatique n'est configurée par ce chantier.
+`@angularkit/atlas@0.1.0` a été publié le 1er octobre 2026 depuis l'archive de la CI. Les versions suivantes sont publiées automatiquement par `.github/workflows/publish.yml` lorsqu'un tag stable `vX.Y.Z` est poussé. Le tag constitue la décision de publier, après relecture et fusion de la PR dans `main` ; un push ordinaire ou une pull request ne publie rien.
 
-## Archive à relire
+## Configuration initiale sur npm
 
-La CI exécute `npm run quality` sur Node.js 22 et 24, puis les scénarios Chromium uniquement sur Node.js 24. Les actions GitHub sont fixées par SHA. Le job Node.js 24 joint ensuite un artefact `atlas-npm-<SHA>` au run, conservé 14 jours :
+Dans les [paramètres du package](https://www.npmjs.com/package/@angularkit/atlas/access), ajouter un **Trusted Publisher → GitHub Actions** :
 
-- `angularkit-atlas-0.1.0.tgz` : package installable ;
-- `atlas-package.json` : version, liste des fichiers, tailles et empreinte d'intégrité fournies par `npm pack`.
+| Champ | Valeur |
+|---|---|
+| Organization or user | `AngularKit` |
+| Repository | `atlas` |
+| Workflow filename | `publish.yml` |
+| Environment name | `npm` |
+| Allowed actions | Autoriser `npm publish` |
 
-Le SHA d'un run de pull request peut être celui du commit de fusion temporaire GitHub. Pour publier après accord, retenir l'archive du run **push sur main** du commit effectivement relu et fusionné, une fois les deux jobs verts. Ne pas publier l'archive d'une autre révision ou d'un run incomplet.
+Ne pas saisir le chemin complet du workflow. La permission de staging seule ne permet pas la publication automatique. La gestion séparée des dist-tags n'est pas nécessaire. Cette connexion autorise précisément ce workflow et cet environnement à publier le package ; son activation se fait une seule fois dans npm, avec la validation du propriétaire.
 
-L'archive contient les modules compilés et déclarations, les deux schémas JSON, les métadonnées npm, README, licence et notes de version. Les rapports de projets, démos, tests et sources des applications analysées n'y figurent pas. Le test d'installation contrôle cette liste autorisée, lance la CLI et l'API, puis compile un consommateur TypeScript strict sans les types de développement du dépôt.
+Aucun `NPM_TOKEN` ni `NODE_AUTH_TOKEN` n'est à créer dans GitHub. Le job utilise OIDC avec npm 11.21.0, un runner hébergé par GitHub et `id-token: write` uniquement pour la publication. La provenance est activée. L'environnement GitHub `npm` peut recevoir des protections supplémentaires si souhaité ; une approbation obligatoire y rendrait la publication semi-automatique.
 
-Une archive peut également être préparée localement, depuis un checkout propre du commit validé :
+## Préparer la version
 
-```sh
-npm ci
-npm run quality
-npx playwright install chromium
-npm run test:browser
-npm pack --ignore-scripts --json > atlas-package.json
-```
-
-Avant une release suivante, mettre à jour `package.json`, `package-lock.json` et les notes de version. Le moteur lit la version directement dans le `package.json` installé. Le test de l'archive vérifie que la version du rapport correspond à celle du package. Finaliser les informations du README et du changelog dans la révision préparée pour publication.
-
-## Première publication
-
-Au contrôle du 1er octobre 2026, le registre ne retourne aucune version publique de `@angularkit/atlas`. Cela ne prouve pas que le compte connecté dispose des droits sur le scope `@angularkit`. Le compte de publication doit disposer de ces droits ; la connexion npm et les éventuelles étapes 2FA se font dans le navigateur ou le terminal du mainteneur, sans transmettre de jeton dans une conversation.
-
-Après validation explicite de la révision et de sa publication, télécharger l'archive du run retenu, vérifier sa liste de fichiers et son intégrité, puis tester la publication à blanc :
+Dans une branche issue de `main`, mettre à jour la version sans créer de tag :
 
 ```sh
-npm login --registry=https://registry.npmjs.org
-npm whoami --registry=https://registry.npmjs.org
-npm publish ./angularkit-atlas-0.1.0.tgz --dry-run --access public --provenance=false
+npm version patch --no-git-tag-version
 ```
 
-Le test à blanc ne vérifie pas les droits d'écriture dans le registre. La commande effective, uniquement une fois l'accord de publication obtenu, est :
+Choisir `minor` ou `major` selon les changements. Mettre à jour le changelog et les exemples versionnés du README. Ouvrir une PR vers `main` et terminer sa relecture technique avant fusion. Ne pas créer une nouvelle version uniquement pour tester l'authentification.
+
+Après fusion et validation de la release, depuis un checkout propre de `main` à jour :
 
 ```sh
-npm publish ./angularkit-atlas-0.1.0.tgz --access public --provenance=false
+git fetch origin main
+git switch main
+git pull --ff-only
+# Exemple : la PR vient de préparer la version 0.1.1.
+git tag -a v0.1.1 -m 'Atlas 0.1.1'
+git push origin v0.1.1
 ```
 
-La provenance npm exige un environnement CI pris en charge. Une première publication depuis le terminal n'a donc pas d'attestation de provenance : l'option explicite `--provenance=false` surcharge le défaut du package pour cette opération seulement. Si une attestation est exigée dès la première version, préparer et relire un workflow de publication authentifié dans GitHub Actions avant de publier ; ce workflow n'est pas inclus dans la CI actuelle.
+Le workflow refuse un tag différent de la version de `package.json`, un lockfile désynchronisé, une préversion ou un commit absent de `origin/main`. Les préversions ne sont pas prises en charge par ce workflow, qui publie sur `latest`.
 
-Après succès, vérifier `npm view @angularkit/atlas@0.1.0 version dist.integrity`, comparer l'intégrité au manifeste et tester la commande `npx` documentée. Une version déjà publiée ne doit pas être réutilisée. Le tag Git et les notes de release doivent désigner le commit correspondant à l'archive.
+## Vérifications et publication
 
-## Publications suivantes
+Le workflow réutilise la CI du commit tagué : typage, tests et installation de l'archive sur Node.js 22 et 24, puis tests Chromium sur Node.js 24. Aucun package n'est publié tant que les deux jobs n'ont pas réussi.
 
-Une fois le package créé, configurer un trusted publisher npm pour un workflow GitHub Actions dédié à `AngularKit/atlas`. Cette configuration et ce workflow feront l'objet d'une étape distincte : ils ne sont pas actifs avec cette PR. Le flux OIDC permet ensuite de publier sans jeton npm permanent, avec provenance depuis le dépôt public. Conserver un déclenchement explicite après relecture.
+Le job Node.js 24 produit l'artefact `atlas-npm-<SHA>` contenant l'archive et `atlas-package.json` (liste des fichiers, tailles et empreinte). Le job de publication télécharge uniquement l'artefact de ce même run. Il vérifie l'intégrité, extrait l'archive et vérifie que le réassemblage conserve exactement la même empreinte. Il publie ce répertoire sans compilation ni scripts de cycle de vie : cela transmet aussi le README à npm, contrairement à la publication directe d'une archive.
 
-Références : [publication d'un package public avec scope](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/), [provenance npm](https://docs.npmjs.com/generating-provenance-statements/), [trusted publishing](https://docs.npmjs.com/trusted-publishers/).
+Après publication, un contrôle attend jusqu'à environ dix minutes la disponibilité du registre, compare l'intégrité, installe le package dans un consommateur vierge et teste sa CLI, son API et la génération HTML. Une erreur de téléchargement ou d'intégrité fait échouer le job. L'attestation de provenance est consultable sur npm.
+
+Les archives ne contiennent pas les rapports privés ni les sources des applications analysées. Le contrôle de distribution existant vérifie la liste autorisée et un consommateur TypeScript strict.
+
+## Si le workflow échoue
+
+- **Avant publication** : corriger la cause et relancer les jobs échoués si le commit reste correct. Pour corriger le contenu, préparer une nouvelle révision relue et une nouvelle version.
+- **Authentification npm** : vérifier les quatre champs du trusted publisher, l'autorisation `npm publish` et l'environnement `npm`. Ne pas ajouter un jeton permanent comme contournement.
+- **Après acceptation par npm** : consulter `npm view @angularkit/atlas@X.Y.Z version dist.integrity` et les logs avant toute relance. Une version publiée est immuable ; ne pas supprimer/recréer un tag ni essayer de republier la même version. Le contrôle public peut être relancé seul avec `node scripts/verify-release.mjs /chemin/atlas-package.json`, à partir du manifeste téléchargé dans le run.
+
+Une release déjà présente dans le registre fera échouer `npm publish` sans modifier son contenu. Les runs de publication sont sérialisés ; une publication en cours n'est pas interrompue. Pousser un seul tag de release à la fois, car GitHub ne conserve qu'un run supplémentaire en attente dans ce groupe.
+
+Références : [trusted publishing npm](https://docs.npmjs.com/trusted-publishers/), [provenance](https://docs.npmjs.com/generating-provenance-statements/).

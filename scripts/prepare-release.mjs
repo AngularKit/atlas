@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+
+const directory = path.resolve(process.argv[2]);
+const [packed] = JSON.parse(fs.readFileSync(path.join(directory, 'atlas-package.json'), 'utf8'));
+const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+assert.equal(packed.name, '@angularkit/atlas');
+assert.equal(packed.version, manifest.version);
+assert.equal(packed.filename, `angularkit-atlas-${manifest.version}.tgz`);
+const archive = path.join(directory, packed.filename);
+const integrity = `sha512-${createHash('sha512').update(fs.readFileSync(archive)).digest('base64')}`;
+assert.equal(integrity, packed.integrity, 'Downloaded archive integrity differs from the CI manifest');
+execFileSync('tar', ['-xzf', archive, '-C', directory]);
+const extracted = JSON.parse(fs.readFileSync(path.join(directory, 'package/package.json'), 'utf8'));
+assert.equal(extracted.name, packed.name);
+assert.equal(extracted.version, packed.version);
+console.log(`Verified and extracted ${packed.filename}.`);
