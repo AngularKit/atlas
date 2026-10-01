@@ -50,7 +50,14 @@ export function mountAtlas(): void {
   let visibleForSearch: Set<string> | null = null;
   let positions = new Map<string, { x: number; y: number }>();
   let graphWidth = 0, graphHeight = 0;
-  const hasDiagnostic = (item: Item) => item.route && inventory.diagnostics.some(diagnostic => diagnostic.routeId === item.route!.id);
+  const diagnosticsByRoute = new Map<string, Inventory['diagnostics']>();
+  for (const diagnostic of inventory.diagnostics) {
+    if (diagnostic.routeId === null) continue;
+    const group = diagnosticsByRoute.get(diagnostic.routeId) ?? [];
+    group.push(diagnostic);
+    diagnosticsByRoute.set(diagnostic.routeId, group);
+  }
+  const hasDiagnostic = (item: Item) => item.route && diagnosticsByRoute.has(item.route.id);
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   get('status').textContent = `${inventory.routes.length} routes · analyse ${inventory.scope.status === 'partial' ? 'partielle' : 'statique'}`;
   get('warnings').textContent = plural(inventory.diagnostics.length, 'point à vérifier', 'points à vérifier');
@@ -149,7 +156,7 @@ export function mountAtlas(): void {
     inspector.append(element('h3', 'Resolvers déclarés ici'));
     if (!Object.keys(route.resolvers).length) inspector.append(element('p', 'Aucun resolver déclaré sur cette route.'));
     for (const [name, ref] of Object.entries(route.resolvers)) reference(name, ref);
-    const diagnostics = inventory.diagnostics.filter(d => d.routeId === route.id);
+    const diagnostics = diagnosticsByRoute.get(route.id) ?? [];
     if (diagnostics.length) { inspector.append(element('h3', 'À vérifier sur cette route')); diagnosticList(diagnostics); }
     inspector.append(element('p', 'Les noms et expressions proviennent du code. Les permissions et l’exécution des fonctions ne sont pas évaluées.'));
   }

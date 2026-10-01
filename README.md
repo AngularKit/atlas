@@ -25,7 +25,7 @@ import { writeFileSync } from 'node:fs';
 writeFileSync('carte.html', toHtml(scan('/chemin/vers/application')));
 ```
 
-Atlas s'exécute sous Node.js ; aucune intégration au runtime Angular n'est nécessaire. Les types TypeScript sont inclus. La distribution est ESM, sans entrée CommonJS dédiée.
+Atlas s'exécute sous Node.js ; aucune intégration au runtime Angular n'est nécessaire. Les types TypeScript sont inclus. Le compilateur TypeScript est une dépendance runtime nécessaire à l’analyse : prévoir environ 20 Mo supplémentaires sur disque, en plus du package Atlas. La distribution est ESM, sans entrée CommonJS dédiée.
 
 ## Essayer depuis les sources
 
@@ -158,7 +158,7 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-La vérification comprend le typage, les tests de fixtures et de CLI, la validation du schéma JSON, puis l'installation hors ligne d'une archive npm dans un répertoire consommateur séparé. Le package installé est testé via sa CLI et son API. La CI exécute ces vérifications sous Node.js 22 et 24, ainsi que les tests Chromium de la carte : branches, recherche, détails, mobile, diagnostics et contenu source hostile. Playwright est une dépendance de développement ; les utilisateurs du package n’ont aucun navigateur à installer pour générer les rapports.
+La vérification comprend le typage, les tests de fixtures et de CLI, la validation du schéma JSON, puis l'installation hors ligne d'une archive npm dans un répertoire consommateur séparé. Le package installé est testé via sa CLI et son API. La CI exécute ces vérifications sous Node.js 22 et 24, puis les tests Chromium de la carte sous Node.js 24 : branches, recherche, détails, mobile, diagnostics et contenu source hostile. Playwright est une dépendance de développement ; les utilisateurs du package n’ont aucun navigateur à installer pour générer les rapports.
 
 Le prototype utilise TypeScript 6. Son premier essai réel est documenté dans [la validation](https://github.com/AngularKit/atlas/blob/main/docs/validation.md) ; cela ne constitue pas une matrice de compatibilité avec toutes les versions Angular.
 

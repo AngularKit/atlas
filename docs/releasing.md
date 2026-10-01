@@ -4,7 +4,7 @@ La `0.1.0` est une version candidate, pas une publication npm. La validation vis
 
 ## Archive à relire
 
-La CI exécute `npm run quality` et les scénarios Chromium sur Node.js 22 et 24. Le job Node.js 24 joint ensuite un artefact `atlas-npm-<SHA>` au run, conservé 14 jours :
+La CI exécute `npm run quality` sur Node.js 22 et 24, puis les scénarios Chromium uniquement sur Node.js 24. Les actions GitHub sont fixées par SHA. Le job Node.js 24 joint ensuite un artefact `atlas-npm-<SHA>` au run, conservé 14 jours :
 
 - `angularkit-atlas-0.1.0.tgz` : package installable ;
 - `atlas-package.json` : version, liste des fichiers, tailles et empreinte d'intégrité fournies par `npm pack`.
@@ -23,7 +23,7 @@ npm run test:browser
 npm pack --ignore-scripts --json > atlas-package.json
 ```
 
-Avant une release suivante, mettre à jour `package.json`, `package-lock.json`, la version dans `src/scan.ts` et les notes de version. Le test de l'archive vérifie que la version du rapport correspond à celle du package. Lors de la préparation finale de la première publication, remplacer les mentions « en préparation / pas encore publiée » du README et du changelog par les informations de release, puis faire valider cette révision.
+Avant une release suivante, mettre à jour `package.json`, `package-lock.json` et les notes de version. Le moteur lit la version directement dans le `package.json` installé. Le test de l'archive vérifie que la version du rapport correspond à celle du package. Lors de la préparation finale de la première publication, remplacer les mentions « en préparation / pas encore publiée » du README et du changelog par les informations de release, puis faire valider cette révision.
 
 ## Première publication
 

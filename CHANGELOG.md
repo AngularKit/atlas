@@ -8,6 +8,7 @@ Première version d'AngularKit Atlas : inventaire statique des déclarations de 
 - Carte HTML autonome : hiérarchie dépliable, recherche, détails et références source, zoom et présentation mobile.
 - Exports JSON et Markdown, détaillés ou compacts, avec schémas JSON versionnés.
 - Analyse de `provideRouter` et `RouterModule.forRoot`, constantes, alias, spreads, routes enfants, imports différés et générateurs statiques bornés.
+- Diagnostics rattachés explicitement à leur contexte, y compris lorsque la limite de routes interrompt une branche ; marqueurs de la carte indexés par route.
 - Guards et resolvers conservés par lieu de déclaration ; diagnostics explicites pour les branches non résolues.
 - Installation de l'archive vérifiée dans un consommateur isolé, en JavaScript et TypeScript ; CI sur Node.js 22 et 24.
 

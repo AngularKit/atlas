@@ -46,6 +46,11 @@ test('offline graph unfolds real branches, searches hidden routes and displays s
   const page=await open(t,{viewport:{width:1440,height:950}});
   assert.equal(await page.locator('.node[data-route-id]').count(),4);
   assert.match(await page.locator('#status').innerText(),/analyse partielle/);
+  const diagnosticRoute = route('/unknown');
+  assert.equal(await page.locator('.node.problem').count(), 1);
+  assert.equal(await page.locator('.node.problem').getAttribute('data-route-id'), diagnosticRoute.id);
+  await page.locator(`[data-route-id="${diagnosticRoute.id}"] .node-main`).click();
+  assert.match(await page.locator('#inspector').innerText(), /UNRESOLVED_ARRAY/);
   const root=route('/');
   const rootToggle=page.locator(`[data-route-id="${root.id}"] .toggle`);
   await rootToggle.focus(); await page.keyboard.press('Enter');

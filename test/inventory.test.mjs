@@ -645,3 +645,54 @@ test('HTML export embeds the full inventory safely and the CLI preserves output 
   assert.equal(run(['--html',duplicate,'--md',duplicate]).status,1);
   assert.ok(!fs.existsSync(duplicate));
 });
+
+test('diagnostic contexts stay attached to parents, siblings and global registrations', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+      import {withRoutes} from '@angular/ssr';
+      provideRouter([
+        {path:'parent',children:[{path:'child',children:unknownChildren()}],loadChildren:unknownLoader()},
+        {path:unknownPath()}
+      ]);
+      withRoutes([]);
+      provideRouter(unknownRoutes());`,
+  });
+  const result = scan(root);
+  const [parent, child, sibling] = result.routes;
+  const at = expression => result.diagnostics.filter(d => {
+    const source = fs.readFileSync(path.join(root, d.source.file), 'utf8').split('\n')[d.source.line - 1];
+    return source.slice(d.source.column - 1).startsWith(expression);
+  });
+  assert.equal(at('unknownChildren()')[0].routeId, child.id);
+  assert.equal(at('unknownLoader()')[0].routeId, parent.id);
+  assert.equal(at('unknownPath()')[0].routeId, sibling.id);
+  assert.equal(at('unknownRoutes()')[0].routeId, null);
+  assert.equal(result.diagnostics.find(d => d.code === 'CONFLICTING_CHILDREN').routeId, parent.id);
+  assert.equal(result.diagnostics.find(d => d.code === 'SERVER_RENDERING_NOT_ANALYZED').routeId, null);
+});
+
+test('route limit diagnostics do not leak the last child into parent or global contexts', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+      import {withRoutes} from '@angular/ssr';
+      const many = [${Array(10_000).fill('{}').join(',')}];
+      provideRouter([{path:'parent',children:many},{path:'later'}]);
+      withRoutes([]);`,
+  });
+  const result = scan(root);
+  assert.equal(result.routes.length, 10_000);
+  assert.deepEqual(result.diagnostics.filter(d => d.code === 'ANALYSIS_LIMIT').map(d => d.routeId), [result.routes[0].id, null]);
+  assert.equal(result.diagnostics.find(d => d.code === 'SERVER_RENDERING_NOT_ANALYZED').routeId, null);
+  assert.ok(validate(result), JSON.stringify(validate.errors));
+});
+
+test('static operation budget is shared across route diagnostic contexts', t => {
+  const root = project(t, {
+    'src/app.ts': `import {provideRouter} from '@angular/router';
+      provideRouter([${Array(2_000).fill('1').join(',')}].map(() => ({path:${Array(16).fill("'x'").join('+')}})));`,
+  });
+  const result = scan(root);
+  assert.ok(result.diagnostics.some(d => d.code === 'ANALYSIS_LIMIT'));
+  assert.equal(result.scope.status, 'partial');
+  assert.equal(result.routes[0].path, 'x'.repeat(16));
+});

@@ -22,11 +22,23 @@ export class StaticReader {
   }
 
   readonly incompleteObjects = new WeakSet<Map<string, ts.Node>>();
-  private operations = 0;
-  private failures = 0;
   readonly report: (code: string, message: string, node: ts.Node) => void;
-  constructor(readonly project: Project, report: (code: string, message: string, node: ts.Node) => void) {
-    this.report = (code, message, node) => { this.failures++; report(code, message, node); };
+  constructor(
+    readonly project: Project,
+    report: (code: string, message: string, node: ts.Node) => void,
+    private readonly evaluation = { operations: 0, failures: 0 },
+  ) {
+    this.report = (code, message, node) => {
+      this.evaluation.failures++;
+      report(code, message, node);
+    };
+  }
+
+  /** Bind diagnostics to a new context without resetting the scan budget or lexical scope. */
+  withReporter(report: StaticReader['report']): StaticReader {
+    const reader = new StaticReader(this.project, report, this.evaluation);
+    reader.bindings = this.bindings;
+    return reader;
   }
 
   symbol(node: ts.Node): ts.Symbol | undefined {
@@ -43,8 +55,8 @@ export class StaticReader {
   }
 
   resolve(input: ts.Node, seen = new Set<ts.Node>()): ts.Node | undefined {
-    if (++this.operations > 50_000) {
-      if (this.operations === 50_001) this.report('ANALYSIS_LIMIT', 'Static evaluation budget exceeded; remaining branches are incomplete.', input);
+    if (++this.evaluation.operations > 50_000) {
+      if (this.evaluation.operations === 50_001) this.report('ANALYSIS_LIMIT', 'Static evaluation budget exceeded; remaining branches are incomplete.', input);
       return undefined;
     }
     const node = unwrap(input);
@@ -148,9 +160,9 @@ export class StaticReader {
       const receiver = node.expression.expression;
       if (method === 'map' && node.arguments.length === 1) {
         // Unknown portions must not shift the indices of the known portions.
-        const before = this.failures;
+        const before = this.evaluation.failures;
         const elements = this.array(receiver, next);
-        if (this.failures !== before) return [];
+        if (this.evaluation.failures !== before) return [];
         const values = elements.map(element => this.withElement(element, value => this.primitive(value)));
         if (values.every(value => value !== undefined)) return this.mapCallback(node.arguments[0]!, values, node);
       }

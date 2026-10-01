@@ -68,6 +68,10 @@ try {
     files: ['api.ts'],
   }));
   execFileSync(process.execPath, ['node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'], { cwd: consumer, stdio: 'pipe' });
+  metadata.version = '0.0.0-metadata-test';
+  fs.writeFileSync(path.join(consumer, 'node_modules/@angularkit/atlas/package.json'), JSON.stringify(metadata));
+  const withUpdatedVersion = JSON.parse(execFileSync(binary, [target], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+  assert.equal(withUpdatedVersion.tool.version, metadata.version, 'Report version must follow the installed package metadata.');
   console.log('Packed package installed offline: executable CLI, API, TypeScript consumer compilation and schemas verified.');
 } finally {
   fs.rmSync(root, { recursive: true, force: true });

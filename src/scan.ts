@@ -1,18 +1,20 @@
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import ts from 'typescript';
 import { Project } from './project.js';
 import { StaticReader } from './static.js';
 import { guardKinds, type Diagnostic, type EntryPoint, type Inventory, type RouteRecord, type ScanOptions } from './model.js';
+
+const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
 
 export function scan(root = '.', options: ScanOptions = {}): Inventory {
   const project = new Project(root, options);
   const diagnostics: Diagnostic[] = [];
   const routes: RouteRecord[] = [];
   const entryPoints: EntryPoint[] = [];
-  let currentRoute: string | null = null;
   const seenDiagnostics = new Set<string>();
-  const report = (code: string, message: string, node: ts.Node) => {
-    const diagnostic = { code, message, source: project.source(node), routeId: currentRoute };
+  const report = (code: string, message: string, node: ts.Node, routeId: string | null = null) => {
+    const diagnostic = { code, message, source: project.source(node), routeId };
     const key = JSON.stringify(diagnostic);
     if (!seenDiagnostics.has(key)) {
       seenDiagnostics.add(key);
@@ -25,100 +27,143 @@ export function scan(root = '.', options: ScanOptions = {}): Inventory {
     throw new Error(`Entry file is not in the analyzed project: ${options.entry}`);
   }
 
-  function readString(value: ts.Node | undefined, fallback: string | null): string | null {
+  function readString(context: StaticReader, value: ts.Node | undefined, fallback: string | null): string | null {
     if (!value) return fallback;
-    const result = reader.string(value);
-    if (result === undefined) report('UNRESOLVED_VALUE', 'Expected a static string; expression is not evaluated.', value);
+    const result = context.string(value);
+    if (result === undefined) {
+      context.report('UNRESOLVED_VALUE', 'Expected a static string; expression is not evaluated.', value);
+    }
     return result ?? null;
   }
 
-  function component(node: ts.Node, lazy: boolean): RouteRecord['component'] {
-    const target = lazy ? reader.lazy(node) : reader.resolve(node);
+  function component(context: StaticReader, node: ts.Node, lazy: boolean): RouteRecord['component'] {
+    const target = lazy ? context.lazy(node) : context.resolve(node);
     if (!target || !ts.isClassDeclaration(target)) {
-      report('UNRESOLVED_COMPONENT', 'Component class could not be resolved inside the project.', node);
-      return { ...reader.reference(node), loading: lazy ? 'lazy' : 'eager' };
+      context.report('UNRESOLVED_COMPONENT', 'Component class could not be resolved inside the project.', node);
+      return { ...context.reference(node), loading: lazy ? 'lazy' : 'eager' };
     }
     return {
-      expression: node.getText(), name: target.name?.text ?? 'default', source: project.source(node),
-      declaration: project.source(target), loading: lazy ? 'lazy' : 'eager',
+      expression: node.getText(),
+      name: target.name?.text ?? 'default',
+      source: project.source(node),
+      declaration: project.source(target),
+      loading: lazy ? 'lazy' : 'eager',
     };
   }
 
-  function visitArray(input: ts.Node, entryId: string, parent: RouteRecord | null, ancestors = new Set<ts.Node>()): void {
-    currentRoute = parent?.id ?? null;
-    const array = reader.resolve(input);
+  function readRoute(
+    context: StaticReader, element: ts.Node, props: Map<string, ts.Node> | undefined,
+    id: string, entryId: string, parent: RouteRecord | null, order: number,
+  ): RouteRecord {
+    const uncertain = !props || context.incompleteObjects.has(props);
+    const routePath = props?.has('matcher') ? null : readString(context, props?.get('path'), uncertain ? null : '');
+    const outlet = readString(context, props?.get('outlet'), uncertain ? null : 'primary');
+    const parentPath = parent ? parent.fullPath : '';
+    let fullPath: string | null = null;
+    if (routePath !== null && outlet === 'primary' && parentPath !== null) {
+      fullPath = `/${[parentPath, routePath].filter(Boolean).join('/')}`.replace(/\/{2,}/g, '/');
+    }
+    const eager = props?.get('component');
+    const lazy = props?.get('loadComponent');
+    const redirect = props?.get('redirectTo');
+    let kind: RouteRecord['kind'] = uncertain ? 'unknown' : 'container';
+    if (eager || lazy) kind = 'screen';
+    if (redirect) kind = 'redirect';
+    let resolvedComponent: RouteRecord['component'] = null;
+    if (eager) resolvedComponent = component(context, eager, false);
+    else if (lazy) resolvedComponent = component(context, lazy, true);
+    return {
+      id, entryPointId: entryId, parentId: parent?.id ?? null, order,
+      source: project.source(element), path: routePath, fullPath,
+      pathMatch: readString(context, props?.get('pathMatch'), uncertain ? null : 'prefix'),
+      outlet, kind, component: resolvedComponent,
+      redirect: redirect ? {
+        expression: redirect.getText(), target: readString(context, redirect, null), source: project.source(redirect),
+      } : null,
+      guards: {}, resolvers: {}, lazyChildren: !!props?.has('loadChildren'),
+    };
+  }
+
+  function readMetadata(context: StaticReader, record: RouteRecord, props: Map<string, ts.Node> | undefined, element: ts.Node): void {
+    const matcher = props?.get('matcher');
+    if (matcher) {
+      context.report('CUSTOM_MATCHER', 'Custom matcher retained as an unresolved URL; descendants have no inferred full URL.', matcher);
+    }
+    if (record.outlet !== 'primary') {
+      context.report('NAMED_OUTLET', 'Named or unresolved outlet: no linear full URL is inferred.', props?.get('outlet') ?? element);
+    }
+    for (const kind of guardKinds) {
+      const value = props?.get(kind);
+      if (!value) continue;
+      record.guards[kind] = context.array(value).map(scoped =>
+        context.withElement(scoped, node => context.reference(node)));
+    }
+    const resolve = props?.get('resolve');
+    const resolvers = resolve ? context.object(resolve) : undefined;
+    for (const [key, value] of resolvers ?? []) {
+      Object.defineProperty(record.resolvers, key, {
+        value: context.reference(value), enumerable: true, configurable: true, writable: true,
+      });
+    }
+    if (props?.has('component') && props.has('loadComponent')) {
+      context.report('CONFLICTING_COMPONENT', 'Both component and loadComponent are declared; eager component shown for inspection.', element);
+    }
+    if (props?.has('children') && props.has('loadChildren')) {
+      context.report('CONFLICTING_CHILDREN', 'Both children and loadChildren are declared; inspect their configuration.', element);
+    }
+  }
+
+  function visitChildren(context: StaticReader, record: RouteRecord, props: Map<string, ts.Node> | undefined, ancestors: Set<ts.Node>): void {
+    const children = props?.get('children');
+    if (children) visitArray(context, children, record.entryPointId, record, ancestors);
+    const lazyChildren = props?.get('loadChildren');
+    if (!lazyChildren) return;
+    const target = context.lazy(lazyChildren);
+    if (!target) return;
+    if (ts.isClassDeclaration(target)) {
+      context.report('LAZY_NGMODULE', 'Lazy NgModule route extraction is not supported in this prototype.', lazyChildren);
+    } else {
+      visitArray(context, target, record.entryPointId, record, ancestors);
+    }
+  }
+
+  function visitRoute(
+    parentContext: StaticReader, element: ts.Node, entryId: string,
+    parent: RouteRecord | null, order: number, ancestors: Set<ts.Node>,
+  ): void {
+    const routeNode = parentContext.resolve(element);
+    if (routeNode && ancestors.has(routeNode)) {
+      parentContext.report('CYCLIC_ROUTES', 'Route object is already an ancestor of this branch.', element);
+      return;
+    }
+    const descendants = routeNode ? new Set(ancestors).add(routeNode) : ancestors;
+    const id = `r${routes.length + 1}`;
+    const context = parentContext.withReporter((code, message, node) => report(code, message, node, id));
+    const props = context.object(element);
+    const record = readRoute(context, element, props, id, entryId, parent, order);
+    routes.push(record);
+    readMetadata(context, record, props, element);
+    visitChildren(context, record, props, descendants);
+  }
+
+  function visitArray(
+    context: StaticReader, input: ts.Node, entryId: string,
+    parent: RouteRecord | null, ancestors = new Set<ts.Node>(),
+  ): void {
+    const array = context.resolve(input);
     if (!array) return;
     if (ancestors.has(array) || ancestors.size >= 100) {
-      report('CYCLIC_ROUTES', 'Cyclic or excessively deep children configuration.', input);
+      context.report('CYCLIC_ROUTES', 'Cyclic or excessively deep children configuration.', input);
       return;
     }
     const next = new Set(ancestors).add(array);
-    const elements = reader.array(array);
-    for (const [order, scoped] of elements.entries()) {
+    for (const [order, scoped] of context.array(array).entries()) {
       if (routes.length >= 10_000) {
-        report('ANALYSIS_LIMIT', 'Route limit exceeded; remaining routes were not expanded.', scoped.node);
+        context.report('ANALYSIS_LIMIT', 'Route limit exceeded; remaining routes were not expanded.', scoped.node);
         return;
       }
-      reader.withElement(scoped, element => {
-        currentRoute = parent?.id ?? null;
-        const routeNode = reader.resolve(element);
-        if (routeNode && next.has(routeNode)) {
-          report('CYCLIC_ROUTES', 'Route object is already an ancestor of this branch.', element);
-          return;
-        }
-        const descendants = routeNode ? new Set(next).add(routeNode) : next;
-        const id = `r${routes.length + 1}`;
-        currentRoute = id;
-        const props = reader.object(element);
-        const uncertain = !props || reader.incompleteObjects.has(props);
-        const field = (key: string) => props?.get(key);
-        const routePath = field('matcher') ? null : readString(field('path'), uncertain ? null : '');
-        const outlet = readString(field('outlet'), uncertain ? null : 'primary');
-        const parentPath = parent ? parent.fullPath : '';
-        const fullPath = routePath === null || outlet !== 'primary' || parentPath === null ? null
-          : `/${[parentPath, routePath].filter(Boolean).join('/')}`.replace(/\/{2,}/g, '/');
-        const eager = field('component');
-        const lazy = field('loadComponent');
-        const redirect = field('redirectTo');
-        const children = field('children');
-        const lazyChildren = field('loadChildren');
-        const record: RouteRecord = {
-          id, entryPointId: entryId, parentId: parent?.id ?? null, order,
-          source: project.source(element), path: routePath, fullPath,
-          pathMatch: readString(field('pathMatch'), uncertain ? null : 'prefix'), outlet,
-          kind: redirect ? 'redirect' : eager || lazy ? 'screen' : props && !uncertain ? 'container' : 'unknown',
-          component: eager ? component(eager, false) : lazy ? component(lazy, true) : null,
-          redirect: redirect ? { expression: redirect.getText(), target: readString(redirect, null), source: project.source(redirect) } : null,
-          guards: {}, resolvers: {}, lazyChildren: !!lazyChildren,
-        };
-        routes.push(record);
-        if (field('matcher')) report('CUSTOM_MATCHER', 'Custom matcher retained as an unresolved URL; descendants have no inferred full URL.', field('matcher')!);
-        if (outlet !== 'primary') report('NAMED_OUTLET', 'Named or unresolved outlet: no linear full URL is inferred.', field('outlet') ?? element);
-        for (const kind of guardKinds) {
-          const value = field(kind);
-          if (value) record.guards[kind] = reader.array(value).map(element => reader.withElement(element, node => reader.reference(node)));
-        }
-        const resolve = field('resolve');
-        if (resolve) {
-          const resolvers = reader.object(resolve);
-          if (resolvers) for (const [key, value] of resolvers) {
-            Object.defineProperty(record.resolvers, key, { value: reader.reference(value), enumerable: true, configurable: true, writable: true });
-          }
-        }
-        if (eager && lazy) report('CONFLICTING_COMPONENT', 'Both component and loadComponent are declared; eager component shown for inspection.', element);
-        if (children && lazyChildren) report('CONFLICTING_CHILDREN', 'Both children and loadChildren are declared; inspect their configuration.', element);
-        if (children) visitArray(children, entryId, record, descendants);
-        if (lazyChildren) {
-          currentRoute = id;
-          const target = reader.lazy(lazyChildren);
-          if (target) {
-            if (ts.isClassDeclaration(target)) report('LAZY_NGMODULE', 'Lazy NgModule route extraction is not supported in this prototype.', lazyChildren);
-            else visitArray(target, entryId, record, descendants);
-          }
-        }
-      });
+      context.withElement(scoped, element => visitRoute(context, element, entryId, parent, order, next));
     }
-    currentRoute = parent?.id ?? null;
   }
 
   function discover(node: ts.Node, includeRegistration: boolean): void {
@@ -131,7 +176,7 @@ export function scan(root = '.', options: ScanOptions = {}): Inventory {
         const argument = node.arguments[0];
         const entry: EntryPoint = { id: `e${entryPoints.length + 1}`, kind, source: project.source(node), expression: argument?.getText() ?? '' };
         entryPoints.push(entry);
-        if (argument) visitArray(argument, entry.id, null);
+        if (argument) visitArray(reader, argument, entry.id, null);
         else report('MISSING_ROUTES', 'Router registration has no routes argument.', node);
       }
       if (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 'forChild'
@@ -163,7 +208,7 @@ export function scan(root = '.', options: ScanOptions = {}): Inventory {
 
   return {
     schemaVersion: '1.0',
-    tool: { name: '@angularkit/atlas', version: '0.1.0', typescriptVersion: ts.version },
+    tool: { name: '@angularkit/atlas', version, typescriptVersion: ts.version },
     project: {
       tsconfig: project.relative(project.config), fingerprint: project.fingerprint,
       files: project.files.map(f => project.relative(f.fileName)), excludedFiles: project.excludedFiles,
