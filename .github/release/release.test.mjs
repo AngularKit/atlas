@@ -73,7 +73,7 @@ test('real release engine versions the tested payload, tags a local remote and s
     ],
   };
   try {
-    git('init', '--bare', remote);
+    git('init', '--bare', '-b', 'main', remote);
     git('init', '-b', 'main');
     git('config', 'user.name', 'Release Test'); git('config', 'user.email', 'release@example.invalid');
     git('commit', '--allow-empty', '-m', 'feat: initial release');
