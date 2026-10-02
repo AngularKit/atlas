@@ -1,5 +1,11 @@
 # Notes de version
 
+## Non publié
+
+- TypeScript devient une dépendance partagée (`>=5.4.2 <6.1`) pour réutiliser le compilateur compatible du projet lors d’une installation locale d’Atlas.
+- Tests de compatibilité sur huit versions de TypeScript et contrôle de l’installation sans second compilateur.
+- Documentation française et anglaise du poids sur disque, de l’installation locale et des limites du partage avec `npx`.
+
 ## 0.1.0 — 1er octobre 2026
 
 Première version d'AngularKit Atlas : inventaire statique des déclarations de routes Angular, destiné à l'audit et à l'exploration d'un projet existant.

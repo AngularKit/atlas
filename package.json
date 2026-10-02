@@ -49,12 +49,13 @@
     "static-analysis",
     "ai-agents"
   ],
-  "dependencies": {
-    "typescript": "^6.0.3"
-  },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.4",
-    "ajv": "^8.20.0"
+    "ajv": "^8.20.0",
+    "typescript": "6.0.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.4.2 <6.1"
   }
 }
