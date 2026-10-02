@@ -23,6 +23,8 @@ Le changement le plus important depuis le dernier tag détermine la version. Une
 
 Ne plus lancer `npm version`, pousser des tags de release ou modifier manuellement le numéro. Le dépôt garde `0.0.0-development` dans ses manifests ; les builds locaux affichent ce numéro. L’archive publiée reçoit la version calculée. Aucun commit automatique ne modifie `main`. Les tags, les releases GitHub et npm sont les références pour les versions publiées. Les notes de release sont générées à partir des commits ; `CHANGELOG.md` conserve le contexte fonctionnel rédigé dans les PR.
 
+Le développement et la CI utilisent pnpm 10.34.6, fixé dans les deux manifests, avec des `pnpm-lock.yaml` séparés pour Atlas et l’outillage de release. Les installations CI utilisent `--frozen-lockfile`. Le CLI npm reste utilisé pour la création des archives, la publication OIDC par le plugin npm de semantic-release et les tests de consommateurs npm. Un test distinct installe aussi l’archive avec pnpm et vérifie CLI, API, types et partage de TypeScript.
+
 ## Configuration initiale
 
 Dans les [paramètres npm du package](https://www.npmjs.com/package/@angularkit/atlas/access), configurer **Trusted Publisher → GitHub Actions** :
@@ -60,6 +62,6 @@ Les runs sont sérialisés, sans interrompre celui en cours. GitHub ne conserve 
 - **Tag créé, publication npm échouée** : semantic-release crée le tag avant l’envoi à npm. Une simple relance peut alors annoncer qu’il n’y a rien à publier. Vérifier d’abord `npm view @angularkit/atlas@X.Y.Z version dist.integrity`, les logs et la release GitHub. Ne pas supprimer le tag automatiquement. Si npm confirme que la version n’existe pas, une récupération explicite et relue doit rétablir le repère de release avant de relancer le commit testé.
 - **npm a accepté la version, puis une étape échoue** : la version publiée est immuable. Ne pas republier ni recréer son tag. Récupérer `published-package.json` dans les artefacts et relancer uniquement `node scripts/verify-release.mjs /chemin/published-package.json`. Si seule la release GitHub manque, la recréer sur le tag existant avec les notes et fichiers du run, sans nouvel envoi à npm.
 
-Une exécution locale de `npm ci --prefix .github/release --ignore-scripts` puis `npm test --prefix .github/release` vérifie la release sans accès en écriture à GitHub ou npm (Node.js 24.10 ou plus récent).
+Une exécution locale de `pnpm --dir .github/release install --frozen-lockfile --ignore-scripts` puis `pnpm --dir .github/release test` vérifie la release sans accès en écriture à GitHub ou npm (Node.js 24.10 ou plus récent et CLI npm 11.21.0, comme le job de publication).
 
 Références : [semantic-release](https://semantic-release.gitbook.io/semantic-release/), [trusted publishing npm](https://docs.npmjs.com/trusted-publishers/), [provenance](https://docs.npmjs.com/generating-provenance-statements/).

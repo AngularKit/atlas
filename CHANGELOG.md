@@ -10,6 +10,8 @@ Les versions et notes générées sont disponibles dans les [releases GitHub](ht
 
 - Version, tag, notes et publication npm automatisés après fusion et réussite de la CI ; procédure documentée en français et en anglais.
 
+- Développement et CI avec pnpm et lockfiles figés ; installation du package vérifiée avec npm et pnpm.
+
 ## 0.1.0 — 1er octobre 2026
 
 Première version d'AngularKit Atlas : inventaire statique des déclarations de routes Angular, destiné à l'audit et à l'exploration d'un projet existant.

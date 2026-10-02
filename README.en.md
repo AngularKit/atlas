@@ -28,6 +28,13 @@ To use the API from a Node.js ESM tool:
 npm install --save-dev @angularkit/atlas@latest
 ```
 
+With pnpm:
+
+```sh
+pnpm add -D @angularkit/atlas
+pnpm exec angular-atlas . --html map.html
+```
+
 ```js
 import { scan, toHtml } from '@angularkit/atlas';
 import { writeFileSync } from 'node:fs';
@@ -227,14 +234,17 @@ To contribute from source:
 ```sh
 git clone https://github.com/AngularKit/atlas.git
 cd atlas
-npm ci
-npm run quality
-npx playwright install chromium
-npm run test:browser
+pnpm install --frozen-lockfile
+pnpm run quality
+pnpm run test:package:pnpm
+pnpm exec playwright install chromium
+pnpm run test:browser
 ```
 
 Checks cover typing, fixture/CLI tests, JSON schema validation and offline installation into a separate consumer directory. The installed package is tested through its CLI and API, with a strict TypeScript consumer. CI runs these checks on Node.js 22 and 24, then Chromium tests on Node.js 24: branches, search, details, mobile, diagnostics and hostile source content. Playwright is a development dependency; package users do not need a browser installation to generate reports.
 
 Atlas development uses TypeScript 6.0.3; CI also checks the shared compilers listed above. [Validation results](https://github.com/AngularKit/atlas/blob/main/docs/validation.md) (French) describe its first real-project checks; they are not a compatibility matrix for every Angular version.
+
+npm and pnpm consumer installations are tested separately; pnpm must also reuse the project’s TypeScript compiler. Both package managers remain supported for installing Atlas.
 
 See the [architecture](https://github.com/AngularKit/atlas/blob/main/docs/architecture.md) (French), [changelog](CHANGELOG.md) (French), [release procedure](https://github.com/AngularKit/atlas/blob/main/docs/releasing.en.md) and [initial project issue](https://github.com/AngularKit/atlas/issues/1).

@@ -4,15 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { Writable } from 'node:stream';
-import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import semanticRelease from 'semantic-release';
-import { analyzeCommits } from '@semantic-release/commit-analyzer';
-import { generateNotes } from '@semantic-release/release-notes-generator';
-import { releasePolicy, analysisPlugins } from './config.mjs';
+import { releasePolicy, analysisPlugins, conventionalConfig, npmPlugin } from './config.mjs';
 import { snapshotPackage, verifyPreparedPackage, recordPreparedArchive } from './artifact.mjs';
 
-const require = createRequire(import.meta.url);
+const { analyzeCommits } = await import(analysisPlugins[0][0]);
+const { generateNotes } = await import(analysisPlugins[1][0]);
 const quiet = () => new Writable({ write(_chunk, _encoding, callback) { callback(); } });
 const logger = { log() {}, error() {}, success() {}, warn() {} };
 const cases = [
@@ -25,14 +23,14 @@ const cases = [
 ];
 for (const [message, type] of cases) {
   test(`Conventional Commits: ${message.split('\n')[0]}`, async () => {
-    assert.equal(await analyzeCommits({ preset: 'conventionalcommits' }, {
+    assert.equal(await analyzeCommits(conventionalConfig, {
       cwd: process.cwd(), commits: [{ hash: 'abc123', message }], logger,
     }), type);
   });
 }
 
 test('release notes describe fixes and link to commits', async () => {
-  const notes = await generateNotes({ preset: 'conventionalcommits' }, {
+  const notes = await generateNotes(conventionalConfig, {
     cwd: process.cwd(), logger,
     options: { repositoryUrl: 'https://github.com/AngularKit/atlas.git' },
     commits: [{ hash: 'abcdef123456789', message: 'fix: share TypeScript' }],
@@ -68,7 +66,7 @@ test('real release engine versions the tested payload, tags a local remote and s
     ...releasePolicy, ci: false, repositoryUrl: remote,
     plugins: [
       analysisPlugins[0],
-      [require.resolve('@semantic-release/npm'), { npmPublish: false, pkgRoot, tarballDir: path.join(directory, 'published') }],
+      [npmPlugin, { npmPublish: false, pkgRoot, tarballDir: path.join(directory, 'published') }],
       { prepare(_config, context) { recordPreparedArchive(directory, original, context.nextRelease.version, context.env); } },
     ],
   };

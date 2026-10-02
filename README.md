@@ -6,7 +6,7 @@ Cartographie et audit de la navigation Angular : routes, écrans et preuves dans
 
 La carte HTML interactive sert à explorer les routes ; le JSON détaillé ou compact alimente les outils et agents IA. Un rapport Markdown est également disponible. Atlas ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
 
-## Utilisation npm
+## Installation et utilisation
 
 Prérequis : **Node.js 22 minimum** (CI sur 22 et 24), les sources du projet Angular et ses dépendances installées. Aucune modification de l’application, aucun serveur Angular et aucun navigateur automatisé ne sont nécessaires.
 
@@ -26,6 +26,13 @@ Pour appeler l'API depuis un outil Node.js en ESM :
 
 ```sh
 npm install --save-dev @angularkit/atlas@latest
+```
+
+Avec pnpm :
+
+```sh
+pnpm add -D @angularkit/atlas
+pnpm exec angular-atlas . --html carte.html
 ```
 
 ```js
@@ -225,11 +232,14 @@ Pour contribuer depuis les sources :
 ```sh
 git clone https://github.com/AngularKit/atlas.git
 cd atlas
-npm ci
-npm run quality
-npx playwright install chromium
-npm run test:browser
+pnpm install --frozen-lockfile
+pnpm run quality
+pnpm run test:package:pnpm
+pnpm exec playwright install chromium
+pnpm run test:browser
 ```
+
+Les installations de consommateurs npm et pnpm sont testées séparément ; pnpm doit lui aussi réutiliser le compilateur TypeScript du projet. Les deux gestionnaires restent utilisables pour installer Atlas.
 
 La vérification comprend le typage, les tests de fixtures et de CLI, la validation du schéma JSON, puis l'installation hors ligne d'une archive npm dans un répertoire consommateur séparé. Le package installé est testé via sa CLI et son API. La CI exécute ces vérifications sous Node.js 22 et 24, puis les tests Chromium de la carte sous Node.js 24 : branches, recherche, détails, mobile, diagnostics et contenu source hostile. Playwright est une dépendance de développement ; les utilisateurs du package n’ont aucun navigateur à installer pour générer les rapports.
 

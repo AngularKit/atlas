@@ -19,7 +19,7 @@ Les rapports de l'application restent locaux. Le dépôt public ne contient pas 
 
 ## Vérifications reproductibles
 
-`npm run quality` couvre notamment :
+`pnpm run quality` couvre notamment :
 
 - Routes imbriquées, routes vides, alias de modules et de symboles, spreads, redirections et wildcards.
 - Exports différés nommés/par défaut et réexports de composants.
@@ -94,6 +94,6 @@ Mesure locale sous macOS arm64, Node.js v24.18.0, Chromium 153.0.8010.12, sans i
 | Groupes repliés | 89–159 ms | 38–48 ms | 75–98 ms |
 | 10 000 routes visibles | 455–505 ms | 60–62 ms | 72–76 ms |
 
-Les durées incluent les commandes Playwright et deux frames navigateur. Les fichiers HTML mesurent environ 4,6 Mo. Chaque essai vérifie le nombre de routes et de marqueurs, un résultat de recherche unique, le diagnostic de la route sélectionnée, l'absence d'erreur JavaScript et de requête réseau. Reproduction : `npm run benchmark:viewer`, après installation de Chromium ; résultats dans `reports/benchmark-viewer-10000.json`.
+Les durées incluent les commandes Playwright et deux frames navigateur. Les fichiers HTML mesurent environ 4,6 Mo. Chaque essai vérifie le nombre de routes et de marqueurs, un résultat de recherche unique, le diagnostic de la route sélectionnée, l'absence d'erreur JavaScript et de requête réseau. Reproduction : `pnpm run benchmark:viewer`, après installation de Chromium ; résultats dans `reports/benchmark-viewer-10000.json`.
 
 Ce contrôle couvre ces deux formes synthétiques sur cette machine. Il ne mesure ni un parcours complet ni les performances sur mobile ; ces durées ne sont pas des seuils garantis. Le script reste hors du package npm et de la CI, sans seuil temporel fragile.

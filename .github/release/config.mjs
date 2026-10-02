@@ -2,9 +2,14 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
+// Resolve the plugins shipped by semantic-release through their owning package.
+// This also works with pnpm's isolated dependency layout.
+const releaseRequire = createRequire(require.resolve('semantic-release'));
+export const conventionalConfig = { config: require.resolve('conventional-changelog-conventionalcommits') };
+export const npmPlugin = releaseRequire.resolve('@semantic-release/npm');
 export const analysisPlugins = [
-  [require.resolve('@semantic-release/commit-analyzer'), { preset: 'conventionalcommits' }],
-  [require.resolve('@semantic-release/release-notes-generator'), { preset: 'conventionalcommits' }],
+  [releaseRequire.resolve('@semantic-release/commit-analyzer'), conventionalConfig],
+  [releaseRequire.resolve('@semantic-release/release-notes-generator'), conventionalConfig],
 ];
 export const releasePolicy = { branches: ['main'], tagFormat: 'v${version}' };
 
@@ -14,9 +19,9 @@ export function releaseConfig(directory, checkPreparedPackage) {
     repositoryUrl: 'https://github.com/AngularKit/atlas.git',
     plugins: [
       ...analysisPlugins,
-      [require.resolve('@semantic-release/npm'), { pkgRoot: path.join(directory, 'package'), tarballDir: path.join(directory, 'published') }],
+      [npmPlugin, { pkgRoot: path.join(directory, 'package'), tarballDir: path.join(directory, 'published') }],
       { prepare: checkPreparedPackage },
-      [require.resolve('@semantic-release/github'), {
+      [releaseRequire.resolve('@semantic-release/github'), {
         successCommentCondition: false,
         failCommentCondition: false,
         releasedLabels: false,

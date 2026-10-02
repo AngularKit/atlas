@@ -23,6 +23,8 @@ The largest change since the previous tag determines the version. A `ci:` PR can
 
 Do not run `npm version`, push release tags or change the version manually. Source manifests retain `0.0.0-development`, which local builds report. The published archive receives the calculated version. No automated commit changes `main`. Tags, GitHub releases and npm are authoritative for published versions. Release notes come from commits; `CHANGELOG.md` keeps the functional context written in PRs.
 
+Development and CI use pnpm 10.34.6, pinned in both manifests, with separate `pnpm-lock.yaml` files for Atlas and release tooling. CI installs use `--frozen-lockfile`. The npm CLI remains responsible for packing archives, OIDC publication through semantic-release’s npm plugin, and npm consumer tests. A separate test also installs the archive using pnpm and checks the CLI, API, types and shared TypeScript compiler.
+
 ## One-time setup
 
 In the [npm package settings](https://www.npmjs.com/package/@angularkit/atlas/access), configure **Trusted Publisher → GitHub Actions**:
@@ -60,6 +62,6 @@ Runs are serialized without interrupting the active run. GitHub keeps only one a
 - **Tag created but npm publication failed:** semantic-release tags before sending the package to npm. Rerunning may report no release required. First inspect `npm view @angularkit/atlas@X.Y.Z version dist.integrity`, logs and the GitHub release. Do not automatically delete the tag. If npm confirms that the version does not exist, an explicit, reviewed recovery must restore the release anchor before rerunning the tested commit.
 - **npm accepted the version but a later step fails:** published versions are immutable. Do not republish or recreate the tag. Download `published-package.json` from the artifacts and rerun only `node scripts/verify-release.mjs /path/published-package.json`. If only the GitHub release is missing, recreate it on the existing tag with that run’s notes and files, without publishing to npm again.
 
-To test releases locally without writing to GitHub or npm, run `npm ci --prefix .github/release --ignore-scripts` followed by `npm test --prefix .github/release` (Node.js 24.10 or newer).
+To test releases locally without writing to GitHub or npm, run `pnpm --dir .github/release install --frozen-lockfile --ignore-scripts` followed by `pnpm --dir .github/release test` (Node.js 24.10 or newer and npm CLI 11.21.0, matching the publication job).
 
 References: [semantic-release](https://semantic-release.gitbook.io/semantic-release/), [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/), [provenance](https://docs.npmjs.com/generating-provenance-statements/).

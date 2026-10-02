@@ -6,6 +6,8 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-package-'));
+const usePnpm = process.argv.includes('--pnpm');
+const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const cache = path.join(root, 'cache');
 try {
@@ -20,10 +22,12 @@ try {
   const consumer = path.join(root, 'consumer');
   fs.mkdirSync(consumer);
   fs.writeFileSync(path.join(consumer, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
-  // npm ci on a fresh CI runner does not necessarily cache registry packuments.
+  // A fresh CI runner does not necessarily cache registry packuments.
   // Supply the locked runtime dependency as a local archive, using an empty cache.
   const [typescript] = JSON.parse(execFileSync(npm, ['pack', './node_modules/typescript', '--ignore-scripts', '--json', '--pack-destination', root, '--cache', cache], { encoding: 'utf8' }));
-  const install = files => execFileSync(npm, ['install', '--offline', '--ignore-scripts', '--legacy-peer-deps=false', '--force=false', '--no-audit', '--no-fund', '--cache', cache, ...files], { cwd: consumer, stdio: 'pipe' });
+  const install = files => usePnpm
+    ? execFileSync(pnpm, ['add', '--offline', '--ignore-scripts', '--strict-peer-dependencies', '--store-dir', path.join(root, 'store'), ...files], { cwd: consumer, stdio: 'pipe' })
+    : execFileSync(npm, ['install', '--offline', '--ignore-scripts', '--legacy-peer-deps=false', '--force=false', '--no-audit', '--no-fund', '--cache', cache, ...files], { cwd: consumer, stdio: 'pipe' });
   // Model an Angular project that already has its compiler. Installing Atlas
   // separately must keep that compiler and resolve to the same physical copy.
   install([path.join(root, typescript.filename)]);
@@ -35,10 +39,12 @@ try {
   assert.equal(metadata.dependencies?.typescript, undefined, 'Atlas must not request a private compiler dependency.');
   assert.equal(fs.readFileSync(compilerPackage, 'utf8'), compilerBefore, 'Installing Atlas must preserve the project compiler.');
   const projectRequire = createRequire(path.join(consumer, 'package.json'));
-  const atlasRequire = createRequire(path.join(consumer, 'node_modules/@angularkit/atlas/package.json'));
+  const atlasRequire = createRequire(fs.realpathSync(path.join(consumer, 'node_modules/@angularkit/atlas/package.json')));
   assert.equal(fs.realpathSync(atlasRequire.resolve('typescript')), fs.realpathSync(projectRequire.resolve('typescript')), 'Atlas must use the project compiler.');
-  const installedLock = JSON.parse(fs.readFileSync(path.join(consumer, 'package-lock.json'), 'utf8'));
-  assert.deepEqual(Object.keys(installedLock.packages).filter(key => /(?:^|\/)node_modules\/typescript$/.test(key)), ['node_modules/typescript'], 'Only one compiler may be installed.');
+  if (!usePnpm) {
+    const installedLock = JSON.parse(fs.readFileSync(path.join(consumer, 'package-lock.json'), 'utf8'));
+    assert.deepEqual(Object.keys(installedLock.packages).filter(key => /(?:^|\/)node_modules\/typescript$/.test(key)), ['node_modules/typescript'], 'Only one compiler may be installed.');
+  }
   const binary = path.join(consumer, 'node_modules/.bin/angular-atlas');
   const help = execFileSync(binary, ['--help'], { encoding: 'utf8' });
   assert.match(help, /AngularKit Atlas/);
@@ -87,7 +93,7 @@ try {
   fs.writeFileSync(path.join(consumer, 'node_modules/@angularkit/atlas/package.json'), JSON.stringify(metadata));
   const withUpdatedVersion = JSON.parse(execFileSync(binary, [target], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
   assert.equal(withUpdatedVersion.tool.version, metadata.version, 'Report version must follow the installed package metadata.');
-  console.log(`Packed package installed offline: shared TypeScript ${typescript.version}, executable CLI, API, TypeScript consumer compilation and schemas verified.`);
+  console.log(`Packed package installed offline with ${usePnpm ? 'pnpm' : 'npm'}: shared TypeScript ${typescript.version}, executable CLI, API, TypeScript consumer compilation and schemas verified.`);
   if (process.argv.includes('--standalone')) {
     // Network integration: npm must also install the required peer when Atlas
     // is used outside an existing Angular project (e.g. an npx environment).
