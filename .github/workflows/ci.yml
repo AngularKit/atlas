@@ -20,6 +20,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run quality
+      - name: Check standalone and incompatible compiler installations
+        if: matrix.node == 24
+        run: npm run test:package -- --standalone
       - run: npx playwright install --with-deps chromium
         if: matrix.node == 24
       - run: npm run test:browser
@@ -37,3 +40,27 @@ jobs:
             ${{ runner.temp }}/atlas-package.json
           if-no-files-found: error
           retention-days: 14
+  typescript:
+    name: TypeScript ${{ matrix.typescript }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        typescript: ['5.4.2', '5.4.5', '5.5.4', '5.6.3', '5.7.3', '5.8.3', '5.9.3']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # Exercise the release JavaScript/declarations built with the pinned 6.0.3
+      # compiler against each supported consumer compiler, without rebuilding.
+      - run: npm run build
+      - name: Select the consumer compiler
+        env:
+          TYPESCRIPT_VERSION: ${{ matrix.typescript }}
+        run: npm install --no-save --package-lock=false --ignore-scripts "typescript@$TYPESCRIPT_VERSION"
+      - run: npm run typecheck
+      - run: node --test test/*.test.mjs
+      - run: npm run test:package

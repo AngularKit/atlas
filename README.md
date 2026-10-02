@@ -35,7 +35,24 @@ import { writeFileSync } from 'node:fs';
 writeFileSync('carte.html', toHtml(scan('/chemin/vers/application')));
 ```
 
-Atlas s'exécute sous Node.js ; aucune intégration au runtime Angular n'est nécessaire. Les types TypeScript sont inclus. Le compilateur TypeScript est une dépendance runtime nécessaire à l’analyse : prévoir environ 20 Mo supplémentaires sur disque, en plus du package Atlas. La distribution est ESM, sans entrée CommonJS dédiée.
+Atlas s’exécute sous Node.js ; aucune intégration au runtime Angular n’est nécessaire. Les types TypeScript sont inclus. La distribution est ESM, sans entrée CommonJS dédiée.
+
+### Poids et partage de TypeScript
+
+La version npm **0.1.0** dépend de TypeScript `^6.0.3`. Si votre projet utilise TypeScript 5, elle peut installer un second compilateur (environ 20 à 25 Mo sur disque). Cela concerne l’outil de développement, sans ajout au bundle Angular.
+
+**Prochaine version, non encore publiée :** TypeScript devient une dépendance partagée (`peerDependency`) compatible avec `>=5.4.2 <6.1`. Une installation locale d’Atlas utilise le compilateur compatible déjà présent dans le projet, sans installer une copie privée. Les versions vérifiées en CI sont 5.4.2, 5.4.5, 5.5.4, 5.6.3, 5.7.3, 5.8.3, 5.9.3 et 6.0.3.
+
+Une fois cette version publiée, privilégier l’installation dans le projet pour partager son compilateur :
+
+```sh
+npm install --save-dev @angularkit/atlas
+npx angular-atlas . --html carte.html
+```
+
+Le partage dépend de l’emplacement d’installation d’Atlas, pas simplement du dossier analysé. Une exécution ponctuelle via `npx --package=…` depuis un projet où Atlas n’est pas installé peut créer un environnement dans le cache npm et y télécharger TypeScript. Avec npm moderne et ses réglages standards, une dépendance partagée absente est installée automatiquement ; une version incompatible doit être résolue selon les contraintes du projet Angular, sans forcer sa mise à niveau pour Atlas. [Fonctionnement des dépendances partagées npm](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#peerdependencies).
+
+`tool.typescriptVersion` dans le rapport indique le compilateur effectivement utilisé. Le contrat JSON reste le même ; les différences de compilateur peuvent modifier les diagnostics et l’empreinte du projet. La compatibilité TypeScript ne constitue pas une certification de toutes les versions Angular.
 
 ## Choisir l’application à analyser
 
@@ -175,6 +192,8 @@ Les liens `routerLink`, `navigate` et `navigateByUrl`, les captures de l’appli
 | `Several applications found` ou `Solution tsconfig` | Passer `--tsconfig` avec la configuration d’une application, plutôt qu’une configuration de solution. |
 | Aucune route ou rapport `partial` | Lire `diagnostics`, vérifier la sélection du projet, ses dépendances et l’enregistrement `provideRouter` ou `RouterModule.forRoot`. Un tableau isolé ne suffit pas. |
 | `Output already exists` | Choisir un nouveau nom ou supprimer explicitement l’ancien rapport. Il n’existe pas d’option `--force`. |
+| TypeScript absent après installation (prochaine version) | Vérifier `legacy-peer-deps` et `--omit=peer`, qui peuvent empêcher l’installation des peers. Installer explicitement une version TypeScript compatible avec votre projet, puis relancer Atlas. |
+| Conflit de peer TypeScript (prochaine version) | La plage prise en charge est `>=5.4.2 <6.1`. Conserver les contraintes Angular du projet ; ne pas utiliser `--force` pour masquer le conflit. |
 | Dossier de sortie introuvable | Créer le dossier avant de lancer la commande. |
 | `SERVER_RENDERING_NOT_ANALYZED` | Les routes client restent dans le rapport ; Atlas n’énumère pas les pages prérendues. |
 | Erreur de lecture ou de syntaxe | Corriger le fichier ou le tsconfig indiqué ; Atlas ne retourne pas de rapport valide après une erreur fatale. |
@@ -212,6 +231,6 @@ npm run test:browser
 
 La vérification comprend le typage, les tests de fixtures et de CLI, la validation du schéma JSON, puis l'installation hors ligne d'une archive npm dans un répertoire consommateur séparé. Le package installé est testé via sa CLI et son API. La CI exécute ces vérifications sous Node.js 22 et 24, puis les tests Chromium de la carte sous Node.js 24 : branches, recherche, détails, mobile, diagnostics et contenu source hostile. Playwright est une dépendance de développement ; les utilisateurs du package n’ont aucun navigateur à installer pour générer les rapports.
 
-Le prototype utilise TypeScript 6. Son premier essai réel est documenté dans [la validation](https://github.com/AngularKit/atlas/blob/main/docs/validation.md) ; cela ne constitue pas une matrice de compatibilité avec toutes les versions Angular.
+Le développement d’Atlas utilise TypeScript 6.0.3 ; la CI vérifie aussi les compilateurs partagés listés ci-dessus. Son premier essai réel est documenté dans [la validation](https://github.com/AngularKit/atlas/blob/main/docs/validation.md) ; cela ne constitue pas une matrice de compatibilité avec toutes les versions Angular.
 
 Voir [l'architecture](https://github.com/AngularKit/atlas/blob/main/docs/architecture.md), [les notes de version](CHANGELOG.md), [la procédure de publication](https://github.com/AngularKit/atlas/blob/main/docs/releasing.md) et [le premier chantier](https://github.com/AngularKit/atlas/issues/1).

@@ -28,7 +28,7 @@ On a branch created from `main`, update the version without creating a tag:
 npm version patch --no-git-tag-version
 ```
 
-Choose `minor` or `major` as appropriate. Update the changelog and versioned examples in both READMEs. Open a PR targeting `main` and complete its technical review before merging. Do not create a release solely to test authentication.
+Choose `minor` or `major` as appropriate. Update the changelog and versioned examples in both READMEs. When releasing shared TypeScript support, remove the “next version, not yet published” note and update the paragraph about 0.1.0 in both guides. Open a PR targeting `main` and complete its technical review before merging. Do not create a release solely to test authentication.
 
 After merge and release approval, from a clean, up-to-date checkout of `main`:
 
@@ -45,7 +45,7 @@ The workflow rejects a tag that differs from the `package.json` version, inconsi
 
 ## Checks and publication
 
-The workflow reuses CI for the tagged commit: type checking, tests and package installation on Node.js 22 and 24, followed by Chromium tests on Node.js 24. Both matrix jobs must succeed before publication.
+The workflow reuses CI for the tagged commit: type checking, tests and package installation on Node.js 22 and 24, followed by Chromium tests on Node.js 24. The TypeScript matrix also runs analysis and distribution tests with the seven supported 5.x versions against JavaScript built with TypeScript 6.0.3. All these jobs must succeed before publication.
 
 The Node.js 24 job uploads `atlas-npm-<SHA>`, containing the archive and `atlas-package.json` (file list, sizes and integrity). The publishing job downloads only the artifact from that same run. It verifies integrity, extracts the archive and checks that repacking produces exactly the same digest. It publishes that directory without rebuilding or running lifecycle scripts, also sending README metadata to npm instead of publishing the tarball directly.
 

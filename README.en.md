@@ -35,7 +35,24 @@ import { writeFileSync } from 'node:fs';
 writeFileSync('map.html', toHtml(scan('/path/to/application')));
 ```
 
-Atlas runs in Node.js, outside the Angular runtime. TypeScript types are included. The TypeScript compiler is a runtime dependency of the analyzer and adds approximately 20 MB on disk beyond Atlas itself. The package is ESM and has no dedicated CommonJS entry point.
+Atlas runs in Node.js, outside the Angular runtime. TypeScript types are included. The package is ESM and has no dedicated CommonJS entry point.
+
+### Size and sharing TypeScript
+
+The published npm version **0.1.0** depends on TypeScript `^6.0.3`. If your project uses TypeScript 5, it may install a second compiler (approximately 20–25 MB on disk). This affects development tooling, without adding to the Angular bundle.
+
+**Next version, not yet published:** TypeScript becomes a shared dependency (`peerDependency`) compatible with `>=5.4.2 <6.1`. Installing Atlas locally uses the project's existing compatible compiler without adding a private copy. CI covers 5.4.2, 5.4.5, 5.5.4, 5.6.3, 5.7.3, 5.8.3, 5.9.3 and 6.0.3.
+
+Once that version is published, prefer installing Atlas in the project to share its compiler:
+
+```sh
+npm install --save-dev @angularkit/atlas
+npx angular-atlas . --html map.html
+```
+
+Sharing depends on where Atlas is installed, not just the directory being analyzed. A one-off `npx --package=…` invocation from a project without Atlas installed may create an environment in the npm cache and download TypeScript there. Modern npm with its standard settings installs missing peer dependencies automatically; resolve incompatible versions according to your Angular project's constraints instead of forcing a TypeScript upgrade for Atlas. [How npm peer dependencies work](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#peerdependencies).
+
+The report's `tool.typescriptVersion` identifies the compiler actually used. The JSON contract remains the same; different compilers may produce different diagnostics and project fingerprints. TypeScript compatibility is not a certification of every Angular version.
 
 ## Select an application
 
@@ -177,6 +194,8 @@ Tests, stories, declaration files and known generated directories are excluded f
 | `Several applications found` or `Solution tsconfig` | Pass `--tsconfig` for an application rather than a solution configuration. |
 | No routes or a `partial` report | Read `diagnostics`; check project selection, installed dependencies and a `provideRouter` or `RouterModule.forRoot` registration. An isolated array is not enough. |
 | `Output already exists` | Choose another filename or explicitly remove the old report. There is no `--force` option. |
+| TypeScript missing after installation (next version) | Check `legacy-peer-deps` and `--omit=peer`, which can prevent peer installation. Explicitly install a TypeScript version compatible with your project, then rerun Atlas. |
+| TypeScript peer conflict (next version) | The supported range is `>=5.4.2 <6.1`. Preserve your Angular project’s constraints; do not use `--force` to hide the conflict. |
 | Output directory missing | Create it before running the command. |
 | `SERVER_RENDERING_NOT_ANALYZED` | Client routes remain in the report; Atlas does not enumerate prerendered pages. |
 | Read or syntax error | Fix the file or tsconfig mentioned in the error; no valid report is returned after a fatal error. |
@@ -214,6 +233,6 @@ npm run test:browser
 
 Checks cover typing, fixture/CLI tests, JSON schema validation and offline installation into a separate consumer directory. The installed package is tested through its CLI and API, with a strict TypeScript consumer. CI runs these checks on Node.js 22 and 24, then Chromium tests on Node.js 24: branches, search, details, mobile, diagnostics and hostile source content. Playwright is a development dependency; package users do not need a browser installation to generate reports.
 
-The analyzer uses TypeScript 6. [Validation results](https://github.com/AngularKit/atlas/blob/main/docs/validation.md) (French) describe its first real-project checks; they are not a compatibility matrix for every Angular version.
+Atlas development uses TypeScript 6.0.3; CI also checks the shared compilers listed above. [Validation results](https://github.com/AngularKit/atlas/blob/main/docs/validation.md) (French) describe its first real-project checks; they are not a compatibility matrix for every Angular version.
 
 See the [architecture](https://github.com/AngularKit/atlas/blob/main/docs/architecture.md) (French), [changelog](CHANGELOG.md) (French), [release procedure](https://github.com/AngularKit/atlas/blob/main/docs/releasing.en.md) and [initial project issue](https://github.com/AngularKit/atlas/issues/1).

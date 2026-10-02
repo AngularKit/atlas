@@ -28,7 +28,7 @@ Dans une branche issue de `main`, mettre à jour la version sans créer de tag :
 npm version patch --no-git-tag-version
 ```
 
-Choisir `minor` ou `major` selon les changements. Mettre à jour le changelog et les exemples versionnés des deux README. Ouvrir une PR vers `main` et terminer sa relecture technique avant fusion. Ne pas créer une nouvelle version uniquement pour tester l'authentification.
+Choisir `minor` ou `major` selon les changements. Mettre à jour le changelog et les exemples versionnés des deux README. Lors de la release du partage TypeScript, retirer la mention « prochaine version, non encore publiée » et actualiser le paragraphe sur la version 0.1.0 dans les deux guides. Ouvrir une PR vers `main` et terminer sa relecture technique avant fusion. Ne pas créer une nouvelle version uniquement pour tester l'authentification.
 
 Après fusion et validation de la release, depuis un checkout propre de `main` à jour :
 
@@ -45,7 +45,7 @@ Le workflow refuse un tag différent de la version de `package.json`, un lockfil
 
 ## Vérifications et publication
 
-Le workflow réutilise la CI du commit tagué : typage, tests et installation de l'archive sur Node.js 22 et 24, puis tests Chromium sur Node.js 24. Aucun package n'est publié tant que les deux jobs n'ont pas réussi.
+Le workflow réutilise la CI du commit tagué : typage, tests et installation de l'archive sur Node.js 22 et 24, puis tests Chromium sur Node.js 24. La matrice TypeScript exécute aussi l’analyse et les tests de distribution avec les sept versions 5.x supportées, sur le JavaScript compilé avec TypeScript 6.0.3. Tous ces jobs doivent réussir avant publication.
 
 Le job Node.js 24 produit l'artefact `atlas-npm-<SHA>` contenant l'archive et `atlas-package.json` (liste des fichiers, tailles et empreinte). Le job de publication télécharge uniquement l'artefact de ce même run. Il vérifie l'intégrité, extrait l'archive et vérifie que le réassemblage conserve exactement la même empreinte. Il publie ce répertoire sans compilation ni scripts de cycle de vie : cela transmet aussi le README à npm, contrairement à la publication directe d'une archive.
 
