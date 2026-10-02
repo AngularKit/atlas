@@ -1,6 +1,6 @@
 {
   "name": "@angularkit/atlas",
-  "version": "0.1.0",
+  "version": "0.0.0-development",
   "description": "Evidence-backed static inventory of Angular routes for audits and AI agents.",
   "type": "module",
   "license": "MIT",

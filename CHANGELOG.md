@@ -1,10 +1,14 @@
 # Notes de version
 
-## Non publié
+Les versions et notes générées sont disponibles dans les [releases GitHub](https://github.com/AngularKit/atlas/releases). Ce fichier conserve le contexte des évolutions du code source.
+
+## Évolutions depuis 0.1.0
 
 - TypeScript devient une dépendance partagée (`>=5.4.2 <6.1`) pour réutiliser le compilateur compatible du projet lors d’une installation locale d’Atlas.
 - Tests de compatibilité sur huit versions de TypeScript et contrôle de l’installation sans second compilateur.
 - Documentation française et anglaise du poids sur disque, de l’installation locale et des limites du partage avec `npx`.
+
+- Version, tag, notes et publication npm automatisés après fusion et réussite de la CI ; procédure documentée en français et en anglais.
 
 ## 0.1.0 — 1er octobre 2026
 
