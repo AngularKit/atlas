@@ -1,6 +1,6 @@
 {
   "name": "@angularkit/atlas",
-  "version": "0.1.0",
+  "version": "0.0.0-development",
   "description": "Evidence-backed static inventory of Angular routes for audits and AI agents.",
   "type": "module",
   "license": "MIT",
@@ -27,12 +27,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test test/*.test.mjs",
+    "test": "pnpm run build && node --test test/*.test.mjs",
     "test:package": "node scripts/test-package.mjs",
-    "quality": "npm run typecheck && npm test && npm run test:package",
-    "prepack": "npm run build",
-    "test:browser": "npm run build && node --test test/browser/*.test.mjs",
-    "benchmark:viewer": "npm run build && node scripts/benchmark-viewer.mjs"
+    "quality": "pnpm run typecheck && pnpm test && pnpm run test:package",
+    "prepack": "pnpm run build",
+    "test:browser": "pnpm run build && node --test test/browser/*.test.mjs",
+    "benchmark:viewer": "pnpm run build && node scripts/benchmark-viewer.mjs",
+    "test:package:pnpm": "node scripts/test-package.mjs --pnpm"
   },
   "repository": {
     "type": "git",
@@ -57,5 +58,6 @@
   },
   "peerDependencies": {
     "typescript": ">=5.4.2 <6.1"
-  }
+  },
+  "packageManager": "pnpm@10.34.6"
 }

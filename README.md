@@ -6,26 +6,33 @@ Cartographie et audit de la navigation Angular : routes, écrans et preuves dans
 
 La carte HTML interactive sert à explorer les routes ; le JSON détaillé ou compact alimente les outils et agents IA. Un rapport Markdown est également disponible. Atlas ne mesure pas les parcours réellement empruntés et ne constitue pas un audit de sécurité.
 
-## Utilisation npm
+## Installation et utilisation
 
 Prérequis : **Node.js 22 minimum** (CI sur 22 et 24), les sources du projet Angular et ses dépendances installées. Aucune modification de l’application, aucun serveur Angular et aucun navigateur automatisé ne sont nécessaires.
 
 Depuis le dossier de votre application, générer une première carte :
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas . --html carte.html
+npx --package=@angularkit/atlas@latest angular-atlas . --html carte.html
 ```
 
 Ouvrir ensuite `carte.html` dans un navigateur. Pour analyser un autre dossier :
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/application --html carte.html
+npx --package=@angularkit/atlas@latest angular-atlas /chemin/vers/application --html carte.html
 ```
 
 Pour appeler l'API depuis un outil Node.js en ESM :
 
 ```sh
-npm install --save-dev @angularkit/atlas@0.1.0
+npm install --save-dev @angularkit/atlas@latest
+```
+
+Avec pnpm :
+
+```sh
+pnpm add -D @angularkit/atlas
+pnpm exec angular-atlas . --html carte.html
 ```
 
 ```js
@@ -41,9 +48,9 @@ Atlas s’exécute sous Node.js ; aucune intégration au runtime Angular n’est
 
 La version npm **0.1.0** dépend de TypeScript `^6.0.3`. Si votre projet utilise TypeScript 5, elle peut installer un second compilateur (environ 20 à 25 Mo sur disque). Cela concerne l’outil de développement, sans ajout au bundle Angular.
 
-**Prochaine version, non encore publiée :** TypeScript devient une dépendance partagée (`peerDependency`) compatible avec `>=5.4.2 <6.1`. Une installation locale d’Atlas utilise le compilateur compatible déjà présent dans le projet, sans installer une copie privée. Les versions vérifiées en CI sont 5.4.2, 5.4.5, 5.5.4, 5.6.3, 5.7.3, 5.8.3, 5.9.3 et 6.0.3.
+**À partir de 0.1.1 :** TypeScript est une dépendance partagée (`peerDependency`) compatible avec `>=5.4.2 <6.1`. Une installation locale d’Atlas utilise le compilateur compatible déjà présent dans le projet, sans installer une copie privée. Les versions vérifiées en CI sont 5.4.2, 5.4.5, 5.5.4, 5.6.3, 5.7.3, 5.8.3, 5.9.3 et 6.0.3.
 
-Une fois cette version publiée, privilégier l’installation dans le projet pour partager son compilateur :
+Avec 0.1.1 ou plus récent, privilégier l’installation dans le projet pour partager son compilateur :
 
 ```sh
 npm install --save-dev @angularkit/atlas
@@ -54,12 +61,14 @@ Le partage dépend de l’emplacement d’installation d’Atlas, pas simplement
 
 `tool.typescriptVersion` dans le rapport indique le compilateur effectivement utilisé. Le contrat JSON reste le même ; les différences de compilateur peuvent modifier les diagnostics et l’empreinte du projet. La compatibilité TypeScript ne constitue pas une certification de toutes les versions Angular.
 
+Les exemples utilisent `latest`. Pour un audit reproductible, verrouiller une version dans le lockfile du projet ou remplacer `@latest` par la version souhaitée. Consulter les [releases](https://github.com/AngularKit/atlas/releases) pour connaître les versions disponibles.
+
 ## Choisir l’application à analyser
 
 Pour un monorepo ou une sélection explicite :
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/workspace --tsconfig apps/shop/tsconfig.app.json
+npx --package=@angularkit/atlas@latest angular-atlas /chemin/vers/workspace --tsconfig apps/shop/tsconfig.app.json
 ```
 
 Atlas utilise les options `tsConfig` des projets de build dans `angular.json`, puis `tsconfig.app.json`, puis `tsconfig.json`. Plusieurs applications détectées demandent un `--tsconfig` explicite. Les configurations solution à références de projets demandent de sélectionner le tsconfig d'une application. Pour Nx et les configurations non standard, préciser ce chemin.
@@ -86,7 +95,7 @@ Sans `--json`, `--md` ni `--html`, le JSON est écrit sur stdout ; le résumé v
 Pour intégrer un inventaire à votre propre CI :
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas . --compact --fail-on-partial --json routes.json
+npx --package=@angularkit/atlas@latest angular-atlas . --compact --fail-on-partial --json routes.json
 ```
 
 Cette commande échoue aussi lorsqu’une limite connue, par exemple le SSG, rend le rapport partiel. Utiliser `--fail-on-partial` seulement si ce comportement est souhaité.
@@ -96,7 +105,7 @@ La documentation est disponible en français et en anglais. Dans la version actu
 ## Carte interactive
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/application --html carte.html
+npx --package=@angularkit/atlas@latest angular-atlas /chemin/vers/application --html carte.html
 ```
 
 Ouvrir `carte.html` dans un navigateur. Le fichier fonctionne hors ligne, sans serveur ni dépendance distante. Il contient l'inventaire complet et ses références source : le partager revient à partager ces informations.
@@ -123,7 +132,7 @@ Pour une première lecture ou pour transmettre moins de contexte à un agent IA,
 
 ```sh
 mkdir -p reports
-npx --package=@angularkit/atlas@0.1.0 angular-atlas /chemin/vers/application --compact --json reports/resume.json --md reports/resume.md
+npx --package=@angularkit/atlas@latest angular-atlas /chemin/vers/application --compact --json reports/resume.json --md reports/resume.md
 ```
 
 Le Markdown compact commence par les points à vérifier, puis présente une section par parent avec de petits tableaux de chemins relatifs, composants et repères. Les composants communs sont indiqués une fois au-dessus du tableau ; chargements différés, guards et clés de resolvers sont regroupés sous les routes concernées. Deux déclarations avec le même chemin restent distinctes. Les listes de fichiers et les preuves détaillées sont omises. Le JSON compact conserve les occurrences, parents, ordre, points d'entrée, chemins, références source des routes et noms ou expressions des guards/resolvers ; il retire les preuves détaillées de chaque référence, les champs vides et les valeurs par défaut (`outlet: primary`, `pathMatch: prefix`, `lazyChildren: false`). Les valeurs inconnues restent `null`.
@@ -192,8 +201,8 @@ Les liens `routerLink`, `navigate` et `navigateByUrl`, les captures de l’appli
 | `Several applications found` ou `Solution tsconfig` | Passer `--tsconfig` avec la configuration d’une application, plutôt qu’une configuration de solution. |
 | Aucune route ou rapport `partial` | Lire `diagnostics`, vérifier la sélection du projet, ses dépendances et l’enregistrement `provideRouter` ou `RouterModule.forRoot`. Un tableau isolé ne suffit pas. |
 | `Output already exists` | Choisir un nouveau nom ou supprimer explicitement l’ancien rapport. Il n’existe pas d’option `--force`. |
-| TypeScript absent après installation (prochaine version) | Vérifier `legacy-peer-deps` et `--omit=peer`, qui peuvent empêcher l’installation des peers. Installer explicitement une version TypeScript compatible avec votre projet, puis relancer Atlas. |
-| Conflit de peer TypeScript (prochaine version) | La plage prise en charge est `>=5.4.2 <6.1`. Conserver les contraintes Angular du projet ; ne pas utiliser `--force` pour masquer le conflit. |
+| TypeScript absent après installation (0.1.1+) | Vérifier `legacy-peer-deps` et `--omit=peer`, qui peuvent empêcher l’installation des peers. Installer explicitement une version TypeScript compatible avec votre projet, puis relancer Atlas. |
+| Conflit de peer TypeScript (0.1.1+) | La plage prise en charge est `>=5.4.2 <6.1`. Conserver les contraintes Angular du projet ; ne pas utiliser `--force` pour masquer le conflit. |
 | Dossier de sortie introuvable | Créer le dossier avant de lancer la commande. |
 | `SERVER_RENDERING_NOT_ANALYZED` | Les routes client restent dans le rapport ; Atlas n’énumère pas les pages prérendues. |
 | Erreur de lecture ou de syntaxe | Corriger le fichier ou le tsconfig indiqué ; Atlas ne retourne pas de rapport valide après une erreur fatale. |
@@ -223,11 +232,14 @@ Pour contribuer depuis les sources :
 ```sh
 git clone https://github.com/AngularKit/atlas.git
 cd atlas
-npm ci
-npm run quality
-npx playwright install chromium
-npm run test:browser
+pnpm install --frozen-lockfile
+pnpm run quality
+pnpm run test:package:pnpm
+pnpm exec playwright install chromium
+pnpm run test:browser
 ```
+
+Les installations de consommateurs npm et pnpm sont testées séparément ; pnpm doit lui aussi réutiliser le compilateur TypeScript du projet. Les deux gestionnaires restent utilisables pour installer Atlas.
 
 La vérification comprend le typage, les tests de fixtures et de CLI, la validation du schéma JSON, puis l'installation hors ligne d'une archive npm dans un répertoire consommateur séparé. Le package installé est testé via sa CLI et son API. La CI exécute ces vérifications sous Node.js 22 et 24, puis les tests Chromium de la carte sous Node.js 24 : branches, recherche, détails, mobile, diagnostics et contenu source hostile. Playwright est une dépendance de développement ; les utilisateurs du package n’ont aucun navigateur à installer pour générer les rapports.
 

@@ -13,19 +13,26 @@ Requirements: **Node.js 22 or later** (CI runs on 22 and 24), the Angular projec
 From your application's directory, generate your first map:
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas . --html map.html
+npx --package=@angularkit/atlas@latest angular-atlas . --html map.html
 ```
 
 Open `map.html` in a browser. To scan another directory:
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas /path/to/application --html map.html
+npx --package=@angularkit/atlas@latest angular-atlas /path/to/application --html map.html
 ```
 
 To use the API from a Node.js ESM tool:
 
 ```sh
-npm install --save-dev @angularkit/atlas@0.1.0
+npm install --save-dev @angularkit/atlas@latest
+```
+
+With pnpm:
+
+```sh
+pnpm add -D @angularkit/atlas
+pnpm exec angular-atlas . --html map.html
 ```
 
 ```js
@@ -41,9 +48,9 @@ Atlas runs in Node.js, outside the Angular runtime. TypeScript types are include
 
 The published npm version **0.1.0** depends on TypeScript `^6.0.3`. If your project uses TypeScript 5, it may install a second compiler (approximately 20–25 MB on disk). This affects development tooling, without adding to the Angular bundle.
 
-**Next version, not yet published:** TypeScript becomes a shared dependency (`peerDependency`) compatible with `>=5.4.2 <6.1`. Installing Atlas locally uses the project's existing compatible compiler without adding a private copy. CI covers 5.4.2, 5.4.5, 5.5.4, 5.6.3, 5.7.3, 5.8.3, 5.9.3 and 6.0.3.
+**From 0.1.1:** TypeScript becomes a shared dependency (`peerDependency`) compatible with `>=5.4.2 <6.1`. Installing Atlas locally uses the project's existing compatible compiler without adding a private copy. CI covers 5.4.2, 5.4.5, 5.5.4, 5.6.3, 5.7.3, 5.8.3, 5.9.3 and 6.0.3.
 
-Once that version is published, prefer installing Atlas in the project to share its compiler:
+With 0.1.1 or later, prefer installing Atlas in the project to share its compiler:
 
 ```sh
 npm install --save-dev @angularkit/atlas
@@ -54,12 +61,14 @@ Sharing depends on where Atlas is installed, not just the directory being analyz
 
 The report's `tool.typescriptVersion` identifies the compiler actually used. The JSON contract remains the same; different compilers may produce different diagnostics and project fingerprints. TypeScript compatibility is not a certification of every Angular version.
 
+Examples use `latest`. For a reproducible audit, lock a version in the project lockfile or replace `@latest` with the desired version. Check the [releases](https://github.com/AngularKit/atlas/releases) for available versions.
+
 ## Select an application
 
 For a monorepo or an explicit configuration:
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas /path/to/workspace --tsconfig apps/shop/tsconfig.app.json
+npx --package=@angularkit/atlas@latest angular-atlas /path/to/workspace --tsconfig apps/shop/tsconfig.app.json
 ```
 
 Atlas looks for the build projects' `tsConfig` options in `angular.json`, then `tsconfig.app.json`, then `tsconfig.json`. If it finds multiple applications, you must pass `--tsconfig`. For solution configs with project references, select an application's tsconfig. Specify the path explicitly for Nx and other nonstandard layouts.
@@ -86,7 +95,7 @@ Without `--json`, `--md` or `--html`, JSON goes to stdout and the summary goes t
 To include an inventory in your own CI:
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas . --compact --fail-on-partial --json routes.json
+npx --package=@angularkit/atlas@latest angular-atlas . --compact --fail-on-partial --json routes.json
 ```
 
 This command also fails when a known limitation, such as SSG, makes the report partial. Use `--fail-on-partial` only if that behavior is intended.
@@ -96,7 +105,7 @@ Documentation is available in French and English. In the current version, CLI he
 ## Interactive map
 
 ```sh
-npx --package=@angularkit/atlas@0.1.0 angular-atlas /path/to/application --html map.html
+npx --package=@angularkit/atlas@latest angular-atlas /path/to/application --html map.html
 ```
 
 Open `map.html` in a browser. It works offline, without a server or external dependencies. It contains the full inventory and source references: sharing the file also shares that information.
@@ -123,7 +132,7 @@ For an initial review or to send less context to an AI agent, create the output 
 
 ```sh
 mkdir -p reports
-npx --package=@angularkit/atlas@0.1.0 angular-atlas /path/to/application --compact --json reports/summary.json --md reports/summary.md
+npx --package=@angularkit/atlas@latest angular-atlas /path/to/application --compact --json reports/summary.json --md reports/summary.md
 ```
 
 Compact Markdown starts with items to review, then groups routes by parent in small tables of relative paths, components and markers. Shared components appear once above a table; lazy loading, guards and resolver keys are grouped beneath the corresponding routes. Two declarations with the same path stay distinct. File lists and detailed evidence are omitted.
@@ -194,8 +203,8 @@ Tests, stories, declaration files and known generated directories are excluded f
 | `Several applications found` or `Solution tsconfig` | Pass `--tsconfig` for an application rather than a solution configuration. |
 | No routes or a `partial` report | Read `diagnostics`; check project selection, installed dependencies and a `provideRouter` or `RouterModule.forRoot` registration. An isolated array is not enough. |
 | `Output already exists` | Choose another filename or explicitly remove the old report. There is no `--force` option. |
-| TypeScript missing after installation (next version) | Check `legacy-peer-deps` and `--omit=peer`, which can prevent peer installation. Explicitly install a TypeScript version compatible with your project, then rerun Atlas. |
-| TypeScript peer conflict (next version) | The supported range is `>=5.4.2 <6.1`. Preserve your Angular project’s constraints; do not use `--force` to hide the conflict. |
+| TypeScript missing after installation (0.1.1+) | Check `legacy-peer-deps` and `--omit=peer`, which can prevent peer installation. Explicitly install a TypeScript version compatible with your project, then rerun Atlas. |
+| TypeScript peer conflict (0.1.1+) | The supported range is `>=5.4.2 <6.1`. Preserve your Angular project’s constraints; do not use `--force` to hide the conflict. |
 | Output directory missing | Create it before running the command. |
 | `SERVER_RENDERING_NOT_ANALYZED` | Client routes remain in the report; Atlas does not enumerate prerendered pages. |
 | Read or syntax error | Fix the file or tsconfig mentioned in the error; no valid report is returned after a fatal error. |
@@ -225,14 +234,17 @@ To contribute from source:
 ```sh
 git clone https://github.com/AngularKit/atlas.git
 cd atlas
-npm ci
-npm run quality
-npx playwright install chromium
-npm run test:browser
+pnpm install --frozen-lockfile
+pnpm run quality
+pnpm run test:package:pnpm
+pnpm exec playwright install chromium
+pnpm run test:browser
 ```
 
 Checks cover typing, fixture/CLI tests, JSON schema validation and offline installation into a separate consumer directory. The installed package is tested through its CLI and API, with a strict TypeScript consumer. CI runs these checks on Node.js 22 and 24, then Chromium tests on Node.js 24: branches, search, details, mobile, diagnostics and hostile source content. Playwright is a development dependency; package users do not need a browser installation to generate reports.
 
 Atlas development uses TypeScript 6.0.3; CI also checks the shared compilers listed above. [Validation results](https://github.com/AngularKit/atlas/blob/main/docs/validation.md) (French) describe its first real-project checks; they are not a compatibility matrix for every Angular version.
+
+npm and pnpm consumer installations are tested separately; pnpm must also reuse the project’s TypeScript compiler. Both package managers remain supported for installing Atlas.
 
 See the [architecture](https://github.com/AngularKit/atlas/blob/main/docs/architecture.md) (French), [changelog](CHANGELOG.md) (French), [release procedure](https://github.com/AngularKit/atlas/blob/main/docs/releasing.en.md) and [initial project issue](https://github.com/AngularKit/atlas/issues/1).
