@@ -1,4 +1,4 @@
-import type { Inventory, RouteRecord, Reference, Source, EntryPoint } from './model.js';
+import type { Inventory, RouteRecord, Reference, Source, EntryPoint, NavigationReference } from './model.js';
 
 /** Serialized into the standalone HTML; keep all runtime helpers inside this function. */
 export function mountAtlas(): void {
@@ -43,6 +43,9 @@ export function mountAtlas(): void {
     }
   }
   const expanded = new Set(inventory.entryPoints.map(entry => `entry:${entry.id}`));
+  const navigation = inventory.navigation;
+  const navigationRefs = navigation?.references ?? [];
+  let navigationEdges = false;
   let selected: string | null = null;
   let zoom = .9;
   let query = '';
@@ -102,8 +105,10 @@ export function mountAtlas(): void {
     panel('Explorez une branche', 'Votre application, route par route');
     inspector.append(element('p', 'Le bouton + ouvre les sous-routes. Sélectionnez un chemin pour retrouver son composant, ses guards et son code source.'));
     field('Déclarations détectées', String(inventory.routes.length));
+    field('Références de navigation', `${navigationRefs.length} · ${navigation?.status === 'partial' ? 'analyse partielle' : 'analyse statique'}`);
+    inspector.append(button('Explorer les références de navigation', showNavigation));
     field('Configuration', inventory.project.tsconfig);
-    inspector.append(element('h3', 'Ce que montrent les liens'), element('p', 'Chaque connexion relie une route à son parent. Elle ne représente pas un clic ou un parcours utilisateur.'));
+    inspector.append(element('h3', 'Ce que montrent les liens'), element('p', 'Les traits pleins relient les parents et enfants. Activez les liens de la sélection pour afficher en pointillés ses destinations candidates. Aucun lien ne prouve un parcours exécuté.'));
     if (inventory.diagnostics.length) {
       inspector.append(element('h3', 'À vérifier'));
       diagnosticList(inventory.diagnostics.slice(0, 1));
@@ -117,6 +122,47 @@ export function mountAtlas(): void {
     const list = element('ul');
     for (const limitation of inventory.scope.limitations) list.append(element('li', limitation));
     inspector.append(list); revealInspector();
+  }
+  function navigationList(refs: NavigationReference[]): void {
+    if (!refs.length) inspector.append(element('p', 'Aucune référence détectée dans ce périmètre.'));
+    let offset = 0;
+    function appendPage(): void {
+      const page = refs.slice(offset, offset + 100); offset += page.length;
+      for (const ref of page) {
+        const block = element('div', undefined, 'reference navigation-reference');
+        const label = { matched: 'Destination candidate', unmatched: 'Sans correspondance explicite', unresolved: 'Non résolu', disabled: 'Lien désactivé' }[ref.status];
+        block.append(element('strong', `${ref.kind} · ${label}`), element('code', ref.expression), element('p', location(ref.source)));
+        if (ref.owner) block.append(element('p', `Déclaré dans ${ref.owner.name}`));
+        if (ref.sourceRouteId) block.append(button(`Depuis ${routes.get(ref.sourceRouteId)?.fullPath ?? ref.sourceRouteId}`, () => select(`route:${ref.sourceRouteId}`, true)));
+        else block.append(element('p', 'Écran d’origine non attribué (composant partagé, service ou contexte inconnu).'));
+        if (ref.target) block.append(element('p', `Destination : ${ref.target}`));
+        if (ref.reason) block.append(element('p', ref.reason));
+        for (const id of ref.targetRouteIds) block.append(button(`Voir ${routes.get(id)?.fullPath ?? id} · ${id}`, () => select(`route:${id}`, true)));
+        inspector.append(block);
+      }
+      if (offset < refs.length) {
+        const more = button(`Afficher la suite (${refs.length - offset})`, () => { more.remove(); appendPage(); });
+        inspector.append(more);
+      }
+    }
+    appendPage();
+  }
+  function showNavigation(): void {
+    panel('Références de navigation', `${navigationRefs.length} références · analyse ${navigation?.status === 'partial' ? 'partielle' : 'statique'}`);
+    inspector.append(element('p', 'Destinations candidates relevées dans le code. Les conditions, guards, redirections et composants imbriqués ne prouvent pas un parcours utilisateur. Une absence de correspondance ne signifie pas un lien cassé.'));
+    if (navigation?.diagnostics.length) diagnosticList(navigation.diagnostics);
+    navigationList(navigationRefs); revealInspector();
+  }
+  function revealDestinations(): void {
+    if (!navigationEdges || !selected) return;
+    // Preserve a search filter: hidden candidates stay accessible from the inspector.
+    for (const ref of navigationRefs.filter(ref => `route:${ref.sourceRouteId}` === selected)) {
+      for (const id of ref.targetRouteIds) {
+        let parent = items.get(`route:${id}`)?.parent;
+        const seen = new Set<string>();
+        while (parent && !seen.has(parent)) { seen.add(parent); expanded.add(parent); parent = items.get(parent)?.parent; }
+      }
+    }
   }
   function details(item: Item): void {
     const route = item.route;
@@ -146,6 +192,10 @@ export function mountAtlas(): void {
     } else field('Type', route.kind === 'container' ? 'Structure de sous-routes' : route.kind === 'redirect' ? 'Redirection' : 'Non résolu');
     if (route.redirect) { inspector.append(element('h3', 'Redirection')); field('Destination déclarée', route.redirect.target ?? 'Non résolue'); inspector.append(element('code', route.redirect.expression)); }
     if (route.lazyChildren) inspector.append(element('p', 'Les sous-routes sont chargées à la demande.'));
+    inspector.append(element('h3', 'Navigation sortante'));
+    navigationList(navigationRefs.filter(ref => ref.sourceRouteId === route.id));
+    inspector.append(element('h3', 'Navigation entrante candidate'));
+    navigationList(navigationRefs.filter(ref => ref.targetRouteIds.includes(route.id)));
     inspector.append(element('h3', 'Guards déclarés ici'));
     const guards = Object.entries(route.guards);
     if (!guards.length) inspector.append(element('p', 'Aucun guard déclaré sur cette route. Consultez ses parents pour leur configuration.'));
@@ -173,7 +223,7 @@ export function mountAtlas(): void {
       const seen = new Set<string>();
       while (parent && !seen.has(parent)) { seen.add(parent); expanded.add(parent); parent = items.get(parent)?.parent ?? null; }
     }
-    selected = key; render(); details(item);
+    selected = key; revealDestinations(); render(); details(item);
     Array.from(stage.querySelectorAll<HTMLElement>('.node')).find(node => node.dataset.key === key)?.querySelector<HTMLButtonElement>('.node-main')?.focus({ preventScroll: true });
     center(key); revealInspector();
   }
@@ -200,7 +250,7 @@ export function mountAtlas(): void {
       positions.set(item.key, { x: mobile.matches ? 20 + Math.min(depth, 4) * 24 : 28 + depth * 290, y }); return y;
     }
     for (const root of children.get(null) ?? []) { layout(root, 0); row += .4; }
-    graphWidth = Math.max(400, ...Array.from(positions.values(), point => point.x + 258));
+    graphWidth = Math.max(400, ...Array.from(positions.values(), point => point.x + (navigationEdges ? 310 : 258)));
     graphHeight = Math.max(320, ...Array.from(positions.values(), point => point.y + 110));
     stage.style.width = `${graphWidth}px`; stage.style.height = `${graphHeight}px`;
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -242,6 +292,18 @@ export function mountAtlas(): void {
         toggle.append(element('span', isOpen ? '−' : '+'), element('small', String(count))); node.append(toggle);
       }
       stage.append(node);
+    }
+    if (navigationEdges && selected) {
+      const from = positions.get(selected);
+      const targets = new Set(navigationRefs.filter(ref => `route:${ref.sourceRouteId}` === selected).flatMap(ref => ref.targetRouteIds));
+      for (const id of targets) {
+        const to = positions.get(`route:${id}`);
+        if (!from || !to) continue;
+        const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        edge.classList.add('navigation-edge');
+        edge.setAttribute('d', `M ${from.x + 230} ${from.y + 55} C ${from.x + 280} ${from.y + 55}, ${to.x + 280} ${to.y + 25}, ${to.x + 230} ${to.y + 25} l 8 -5 m -8 5 l 8 5`);
+        svg.append(edge);
+      }
     }
     const shown = visible.filter(item => item.route).length;
     get('map-count').textContent = `${shown} / ${inventory.routes.length} déclarations affichées${query ? ` · ${matchKeys.size} résultats` : ''}`;
@@ -289,5 +351,10 @@ export function mountAtlas(): void {
   const endDrag = () => { drag = null; viewport.classList.remove('dragging'); };
   viewport.addEventListener('pointerup', endDrag); viewport.addEventListener('pointercancel', endDrag);
   mobile.addEventListener('change', () => { render(); if (selected) center(selected); });
+  get('navigation').addEventListener('click', showNavigation);
+  get('navigation-edges').addEventListener('click', () => {
+    navigationEdges = !navigationEdges; get('navigation-edges').setAttribute('aria-pressed', String(navigationEdges));
+    revealDestinations(); render();
+  });
   render(); overview();
 }

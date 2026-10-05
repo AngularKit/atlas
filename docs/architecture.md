@@ -6,6 +6,10 @@ Le moteur travaille sur les sources, sans charger les modules JavaScript du proj
 |---|---|
 | `project.ts` | Sélection et lecture du tsconfig, programme TypeScript, périmètre des fichiers, résolution de modules et empreinte. |
 | `static.ts` | Lecture limitée des constantes, tableaux, objets et imports différés ; diagnostics sur les formes non prises en charge. |
+| `navigation.ts` | Identification des templates et appels Router, propriétaires, contextes de route et preuves. |
+| `navigation-template.ts` | Parseur officiel Angular, extraction bornée des routerLink littéraux et diagnostics de syntaxe. Embarqué par esbuild à la construction. |
+| `navigation-target.ts` | Résolution prudente des chemins et rapprochement avec les motifs explicites, sans simuler le routeur. |
+| `markdown-navigation.ts` | Présentation des références de navigation dans les deux rapports Markdown. |
 | `scan.ts` | Reconnaissance des enregistrements Angular et construction du graphe de routes avec preuves. |
 | `model.ts` | Contrat public de l'inventaire et des options. |
 | `compact.ts` | Projection légère du modèle complet, sans suppression de routes ni de diagnostics. |
@@ -39,4 +43,16 @@ Tests sociables sur de vrais fichiers temporaires et le compilateur TypeScript r
 
 ## Évolutions
 
-Les références de navigation formeront des relations distinctes de la hiérarchie des routes. Les parcours navigateur devront préciser leur contexte d'observation. Le rendu HTML réutilise le modèle ; il ne pilote pas le moteur. Le partage éventuel de code avec Inventory dépendra des besoins observés, sans extraction préalable d'un framework commun.
+Les références de navigation sont des relations distinctes de la hiérarchie des routes. Les parcours navigateur devront préciser leur contexte d'observation. Le rendu HTML réutilise le modèle ; il ne pilote pas le moteur. Le partage éventuel de code avec Inventory dépendra des besoins observés, sans extraction préalable d'un framework commun.
+
+## Navigation statique (schéma 1.1)
+
+L’analyse de navigation a son propre statut et ses diagnostics ; elle ne transforme pas une expression dynamique ordinaire en échec d’extraction des routes. Le mode CLI strict prend les deux statuts en compte. Les lecteurs de rapports 1.0 restent utilisables ; les nouveaux schémas exigent `navigation` pour la version 1.1.
+
+Les classes sont reliées aux occurrences de routes par leur déclaration TypeScript, jamais par leur nom seul. Un composant réutilisé produit plusieurs contextes ; une classe non routée garde une origine non attribuée. Ni les imports de composants ni leurs sélecteurs ne prouvent dans ce jalon qu’un lien apparaît dans un écran donné. Les appels sont reconnus par les déclarations de la méthode Router ; une méthode locale homonyme est ignorée. Les scopes RouterLink non établis restent explicites.
+
+Le parser Angular est une dépendance de développement, compilée en un module autonome d’environ 496 ko. Son code et sa licence MIT sont livrés dans l’archive ; aucun module du projet analysé n’est chargé ou exécuté. Ce choix respecte les grammaires de template (blocs, interpolation, commentaires, ngNonBindable) tout en évitant une nouvelle dépendance runtime imposant une version Angular au consommateur. Les tests de distribution vérifient la lecture d’un template sans `@angular/compiler` installé.
+
+Les templates externes sont lus dans la racine réelle du projet (liens symboliques sortants refusés), bornés en taille et inclus dans l’empreinte. Les positions des templates inline ne sont utilisées que si le texte littéral correspond exactement au texte source ; les échappements JS sont diagnostiqués. Les attributs copiés par la désucrarisation des directives structurelles sont dédupliqués par position et expression.
+
+Les correspondances sont des candidats de motifs explicites, pas un calcul du premier match Angular. Elles n’exécutent ni guard, ni redirection, ni code métier. Les wildcards ne masquent pas les destinations sans correspondance explicite. La carte révèle les destinations d’une sélection sans effacer un filtre de recherche ; le panneau donne accès aux destinations masquées. Les chaînes sont toujours affichées par textContent et la CSP reste inchangée.

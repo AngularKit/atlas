@@ -17,6 +17,7 @@ try {
     assert.ok(packed.files.some(f => f.path === file), `Missing packaged file: ${file}`);
   }
   for (const file of packed.files) {
+    if (file.path === 'dist/angular-compiler-LICENSE') continue;
     assert.match(file.path, /^(?:dist\/[\w-]+\.(?:js|d\.ts)|schema\/(?:compact-)?inventory-v1\.schema\.json|package\.json|README(?:\.en)?\.md|CHANGELOG\.md|LICENSE)$/, `Unexpected packaged file: ${file.path}`);
   }
   const consumer = path.join(root, 'consumer');
@@ -51,10 +52,13 @@ try {
   const target = path.join(root, 'application');
   fs.mkdirSync(target);
   fs.writeFileSync(path.join(target, 'tsconfig.json'), JSON.stringify({ compilerOptions: { types: [], noLib: true }, files: ['app.ts'] }));
-  fs.writeFileSync(path.join(target, 'app.ts'), `import { provideRouter } from '@angular/router'; provideRouter([{ path: 'packed' }]);`);
+  fs.writeFileSync(path.join(target, 'app.ts'), `import { provideRouter, RouterLink } from '@angular/router'; import { Component } from '@angular/core'; @Component({imports:[RouterLink],template:'<a routerLink="/packed">Go</a>'}) class Page {} provideRouter([{ path: 'packed', component: Page }]);`);
   const json = execFileSync(binary, [target], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const report = JSON.parse(json);
   assert.equal(report.routes[0].fullPath, '/packed');
+  assert.equal(report.navigation.references[0].target, '/packed');
+  assert.equal(report.navigation.references[0].status, 'matched');
+  assert.throws(() => atlasRequire.resolve('@angular/compiler'), 'Consumers must not need Angular compiler installed.');
   assert.equal(report.tool.version, packed.version);
   assert.equal(report.tool.typescriptVersion, typescript.version, 'Reports must identify the shared compiler actually used.');
   const html = path.join(consumer, 'map.html');

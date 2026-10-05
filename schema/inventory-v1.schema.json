@@ -5,8 +5,10 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "tool", "project", "scope", "entryPoints", "routes", "diagnostics"],
+  "allOf": [{"if": {"properties": {"schemaVersion": {"const": "1.1"}}}, "then": {"required": ["navigation"]}}],
   "properties": {
-    "schemaVersion": { "const": "1.0" },
+    "navigation": { "$ref": "#/definitions/navigation" },
+    "schemaVersion": { "enum": ["1.0", "1.1"] },
     "tool": {
       "type": "object", "additionalProperties": false,
       "required": ["name", "version", "typescriptVersion"],
@@ -39,6 +41,124 @@
     "diagnostics": { "type": "array", "items": { "$ref": "#/definitions/diagnostic" } }
   },
   "definitions": {
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "references",
+        "diagnostics"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "static",
+            "partial"
+          ]
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/navigationReference"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/diagnostic"
+          }
+        }
+      }
+    },
+    "navigationReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "source",
+        "expression",
+        "owner",
+        "sourceRouteId",
+        "target",
+        "targetRouteIds",
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "routerLink",
+            "navigate",
+            "navigateByUrl"
+          ]
+        },
+        "source": {
+          "$ref": "#/definitions/source"
+        },
+        "expression": {
+          "type": "string"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "declaration"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "declaration": {
+                  "$ref": "#/definitions/source"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceRouteId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "targetRouteIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "unmatched",
+            "unresolved",
+            "disabled"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "source": {
       "type": "object", "additionalProperties": false,
       "required": ["file", "line", "column"],

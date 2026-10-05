@@ -97,4 +97,13 @@ h1{font-size:14px;margin-top:3px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}
 }
 
+
+.navigation-edge{fill:none;stroke:#8b5cf6;stroke-width:2.5;stroke-dasharray:7 5}
+.navigation-legend{color:#7c3aed}
+#navigation-edges[aria-pressed="true"]{background:#ede9fe;color:#5b21b6;border-color:#8b5cf6}
+.navigation-reference button{margin:4px 4px 4px 0}
+.toolbar-actions{flex-wrap:wrap}
+
+.navigation-reference code{display:block;margin-top:8px;overflow-wrap:anywhere}
+.legend .navigation-legend::before{height:0;border-top:2px dashed #8b5cf6;background:none}
 `;

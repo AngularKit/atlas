@@ -14,8 +14,8 @@ let url;
 before(async () => {
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-browser-'));
   fs.writeFileSync(path.join(directory, 'tsconfig.json'), JSON.stringify({compilerOptions:{noLib:true,types:[]},files:['app.ts']}));
-  fs.writeFileSync(path.join(directory, 'app.ts'), `import {provideRouter} from '@angular/router';
-    export class LessonPage {}
+  fs.writeFileSync(path.join(directory, 'app.ts'), `import {provideRouter,RouterLink} from '@angular/router'; import {Component} from '@angular/core';
+    @Component({imports:[RouterLink],template:'<a routerLink="/old">Go</a><a [routerLink]="destination">Dynamic</a>'}) export class LessonPage {}
     const authGuard=()=>true; const resolver=(id:number)=>()=>id;
     provideRouter([
       {path:'',canActivate:[authGuard],children:[{path:'lessons',children:[1,2,3,4,5,6,7,8,9].map(id=>({path:'lesson-'+id,component:LessonPage,resolve:{item:resolver(id)}}))},{path:'same'},{path:'same'}]},
@@ -124,4 +124,27 @@ test('empty inventory is explained without graph errors',async t=>{
   await page.goto(pathToFileURL(filename).href);
   assert.match(await page.locator('.empty').innerText(),/Aucune route détectée/);
   assert.match(await page.locator('#map-count').innerText(),/0 \/ 0/);
+});
+
+
+test('navigation references expose evidence, candidate targets and selected edges without confusing hierarchy',async t=>{
+  const page=await open(t,{viewport:{width:1440,height:950}});
+  await page.locator('#navigation').click();
+  assert.match(await page.locator('#inspector').innerText(),/Non résolu/);
+  assert.match(await page.locator('#inspector').innerText(),/app.ts:/);
+  await page.locator('#search').fill('lesson-1');
+  await page.locator('#results button').click();
+  assert.match(await page.locator('#inspector').innerText(),/Navigation sortante/);
+  await page.locator('#navigation-edges').click();
+  assert.equal(await page.locator('#navigation-edges').getAttribute('aria-pressed'),'true');
+  // Destinations outside the current search remain accessible through the inspector.
+  await page.getByRole('button',{name:`Voir /old · ${route('/old').id}`,exact:true}).click();
+  assert.equal(await page.locator('#search').inputValue(),'');
+  assert.equal(await page.locator('#inspector h2').innerText(),'/old');
+  assert.match(await page.locator('#inspector').innerText(),/Navigation entrante candidate/);
+  await page.getByRole('button',{name:'Depuis /lessons/lesson-1',exact:true}).click();
+  assert.equal(await page.locator('.navigation-edge').count(),1);
+  assert.ok(await page.locator('.edge').count()>0);
+  await page.locator('#navigation-edges').click();
+  assert.equal(await page.locator('.navigation-edge').count(),0);
 });

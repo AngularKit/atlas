@@ -89,7 +89,7 @@ Sans `--json`, `--md` ni `--html`, le JSON est écrit sur stdout ; le résumé v
 | `--json <fichier>` | Enregistrer l’inventaire JSON. |
 | `--md <fichier>` | Enregistrer le rapport Markdown. |
 | `--compact` | Alléger les sorties JSON et Markdown ; la carte reste détaillée. |
-| `--fail-on-partial` | Retourner le code `2` pour une analyse partielle, après écriture des rapports. |
+| `--fail-on-partial` | Retourner le code `2` si les routes ou la navigation sont partiellement analysées, après écriture des rapports. |
 | `--help` | Afficher l’aide. |
 
 Pour intégrer un inventaire à votre propre CI :
@@ -113,7 +113,7 @@ Ouvrir `carte.html` dans un navigateur. Le fichier fonctionne hors ligne, sans s
 - Les routes racines sont visibles au départ ; les boutons + / − déplient et replient les branches, avec leur nombre de descendants.
 - La recherche porte sur les chemins et noms de composants. Elle révèle les ancêtres des résultats ; sélectionner un résultat conserve le filtre. « Vue d’ensemble » remet la carte à son état initial.
 - Un clic sur un chemin ouvre les composants, guards, resolvers, redirections et sources. Les guards restent associés à leur route de déclaration.
-- Les connexions représentent uniquement la relation parent–enfant, pas les liens de navigation ou les permissions.
+- Les traits pleins représentent la relation parent–enfant. « Liens de la sélection » affiche en pointillés les destinations candidates de la route sélectionnée. Le panneau présente les références entrantes/sortantes et permet d’ouvrir une destination, même repliée. Les permissions ne sont pas déduites.
 - La carte propose le zoom et le déplacement ; sur mobile les branches se lisent verticalement. Les contrôles sont utilisables au clavier.
 - Les diagnostics restent visibles, y compris les limites du SSG. Les doublons de chemins conservent leurs identités distinctes.
 
@@ -125,6 +125,36 @@ import { writeFileSync } from 'node:fs';
 
 writeFileSync('carte.html', toHtml(scan('/chemin/vers/application')));
 ```
+
+## Liens de navigation (0.2+)
+
+La carte et les exports incluent désormais les références `routerLink` des templates Angular (inline ou `templateUrl`) et les appels TypeScript `Router.navigate()` / `Router.navigateByUrl()`. Aucune option supplémentaire n’est nécessaire. Dans la carte, ouvrir **Références de navigation** pour le relevé global ; sélectionner une route pour ses liens entrants et sortants, puis activer **Liens de la sélection** pour les connexions en pointillés. Les candidats masqués par une recherche restent accessibles depuis le panneau.
+
+```html
+<a routerLink="/catalogue">Catalogue</a>
+<a [routerLink]="['/produit', 42]">Produit</a>
+```
+
+```ts
+router.navigate(['/catalogue']);
+router.navigate(['../liste'], { relativeTo: this.route });
+router.navigateByUrl('/catalogue?tri=date#resultats');
+```
+
+Atlas conserve la référence source, l’expression, la classe propriétaire et, quand elle est connue, la route d’origine. Les liens d’un composant partagé ou d’un service restent visibles avec une origine non attribuée. Un composant utilisé par plusieurs routes produit une référence par contexte ; les liens de ses composants imbriqués ne sont pas propagés automatiquement vers ces routes.
+
+- **Destination candidate** (`matched`) : le chemin correspond à un ou plusieurs motifs explicites. Les doublons et paramètres restent des candidats distincts ; ni l’ordre effectif de sélection, ni les guards, ni les redirections ne sont exécutés.
+- **Sans correspondance explicite** (`unmatched`) : aucun motif explicite trouvé. Une wildcard ou une route non résolue peut prendre le relais ; ce n’est pas un verdict « lien cassé ».
+- **Non résolu** (`unresolved`) : destination dynamique ou syntaxe/contexte non pris en charge. L’expression et sa source restent disponibles.
+- **Lien désactivé** (`disabled`) : `routerLink` vaut littéralement `null` ou `undefined`.
+
+Les chaînes et tableaux littéraux de chaînes/nombres sont lus sans exécuter le projet. Un `routerLink` relatif utilise le contexte du composant directement routé ; `navigate()` part de la racine par défaut. Le `relativeTo` TypeScript est reconnu pour l’`ActivatedRoute` directement injectée dans ce composant (champ `inject` ou paramètre constructeur). Ses parents, une option dynamique, un contexte inconnu ou les paramètres runtime conservés dans un chemin relatif restent non résolus. Les liens absolus d’un composant partagé peuvent toujours avoir une destination candidate.
+
+Le parseur de templates Angular **22.0.7** est embarqué (~496 ko de JavaScript, avant compression). Aucun compilateur Angular supplémentaire n’est installé chez le consommateur ; TypeScript reste partagé. Les templates externes lus entrent dans `project.files` et l’empreinte du projet. Les syntaxes Angular plus récentes non reconnues produisent un diagnostic. La présence de `RouterLink`/`RouterModule` dans les imports standalone confirme le périmètre de la directive ; les scopes NgModule et directives homonymes non confirmés restent non résolus.
+
+Limites de ce jalon : expressions de champs/signaux dans les templates, `UrlTree`, outlets et paramètres matriciels, segments encodés, `relativeTo` explicite dans un template, appels de navigation dans les expressions d’événements des templates, host bindings, héritage et composition des composants non analysés. Les templates inline avec échappements JavaScript restent diagnostiqués pour éviter des positions source approximatives. Les références sont plafonnées à 10 000 ; un template externe dépassant 2 millions de caractères ou sortant du projet est diagnostiqué.
+
+Le contrat JSON passe à **1.1**, avec `navigation: { status, references, diagnostics }`. `scope.status` décrit toujours les routes ; `navigation.status` décrit cette analyse supplémentaire. `--fail-on-partial` retourne désormais `2` si **l’un ou l’autre** est partiel, après écriture des rapports. Les schémas acceptent encore les inventaires 1.0, et les rendus restent compatibles avec leur absence de champ `navigation`. Le format compact conserve ces références et leurs incertitudes.
 
 ## Rapport compact
 
@@ -162,7 +192,7 @@ L'évaluateur suit les constantes, imports, alias du tsconfig, `satisfies`, asse
 
 ## Lire le résultat sans surinterpréter
 
-`schemaVersion: "1.0"` est décrit par [le schéma JSON](schema/inventory-v1.schema.json). Les IDs identifient les occurrences dans un rapport ; ils ne sont pas des identifiants pérennes entre commits. Deux routes qui partagent un composant ou un chemin restent distinctes.
+`schemaVersion: "1.1"` est décrit par [le schéma JSON](schema/inventory-v1.schema.json). Les IDs identifient les occurrences dans un rapport ; ils ne sont pas des identifiants pérennes entre commits. Deux routes qui partagent un composant ou un chemin restent distinctes.
 
 - `scope.status: "static"` : aucune limite détectée parmi les formes statiques analysées. Ce n'est pas une garantie d'exhaustivité à l'exécution.
 - `scope.status: "partial"` : des éléments n'ont pas été résolus, ou aucun point d'entrée pris en charge n'a été trouvé. Les diagnostics indiquent où poursuivre la revue.
@@ -192,7 +222,7 @@ Un appel `withRoutes` ou `provideServerRouting` de `@angular/ssr` produit `SERVE
 
 Tests, stories, déclarations et dossiers générés connus sont exclus des cibles d'analyse. `excludedFiles` liste les exclusions rencontrées par le compilateur et le tsconfig ; il ne recense pas tous les fichiers ignorés sur disque. Les imports hors de la racine sélectionnée ne sont pas développés comme routes applicatives.
 
-Les liens `routerLink`, `navigate` et `navigateByUrl`, les captures de l’application analysée et un éventuel MCP viendront dans des jalons ultérieurs. Aucun score de sécurité ni verdict « route inutilisée » n'est calculé.
+Les captures de l’application analysée et un éventuel MCP viendront dans des jalons ultérieurs. Aucun score de sécurité ni verdict « route inutilisée » n'est calculé.
 
 ## Dépannage
 

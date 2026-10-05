@@ -14,7 +14,7 @@ Usage: angular-atlas [project-root] [options]
   --md <file>       Écrire le rapport Markdown
   --html <file>    Écrire la carte interactive HTML autonome
   --compact        Produire une synthèse JSON/Markdown sans preuves détaillées
-  --fail-on-partial Retourner le code 2 si des branches ne sont pas résolues
+  --fail-on-partial Retourner le code 2 si les routes ou la navigation sont partiellement analysées
   --help            Afficher cette aide
 
 Sans fichier de sortie, le JSON est écrit sur stdout.
@@ -43,7 +43,8 @@ try {
     if (values.html) fs.writeFileSync(values.html, toHtml(result), { flag: 'wx' });
     if (!outputs.length) process.stdout.write(json);
     process.stderr.write(`${result.routes.length} routes; ${result.diagnostics.length} diagnostics; ${result.scope.status}.\n`);
-    if (values['fail-on-partial'] && result.scope.status === 'partial') process.exitCode = 2;
+    if (result.navigation) process.stderr.write(`${result.navigation.references.length} navigation references; ${result.navigation.status}.\n`);
+    if (values['fail-on-partial'] && (result.scope.status === 'partial' || result.navigation?.status === 'partial')) process.exitCode = 2;
   }
 } catch (error) {
   process.stderr.write(`Atlas: ${error instanceof Error ? error.message : String(error)}\n`);

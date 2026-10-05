@@ -1,3 +1,4 @@
+import { navigationMarkdown } from './markdown-navigation.js';
 import type { Inventory } from './model.js';
 import { escapeMarkdown as escape, sourceLabel as source } from './markdown-text.js';
 import { compactMarkdown } from './markdown-compact.js';
@@ -40,5 +41,6 @@ export function toMarkdown(inventory: Inventory, options: MarkdownOptions = {}):
   for (const file of inventory.project.files) lines.push(`- ${escape(file)}`);
   lines.push('', '### Fichiers exclus rencontrés', '');
   for (const file of inventory.project.excludedFiles) lines.push(`- ${escape(file)}`);
+  lines.push(...navigationMarkdown(inventory, false));
   return lines.join('\n') + '\n';
 }

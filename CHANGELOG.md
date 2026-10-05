@@ -2,7 +2,14 @@
 
 Les versions et notes générées sont disponibles dans les [releases GitHub](https://github.com/AngularKit/atlas/releases). Ce fichier conserve le contexte des évolutions du code source.
 
-## Évolutions depuis 0.1.0
+## À paraître — navigation déclarée
+
+- Références `routerLink`, `Router.navigate()` et `Router.navigateByUrl()` avec preuve source, origine connue ou non attribuée, destinations candidates et expressions non résolues.
+- Carte : références entrantes/sortantes, liste globale et connexions optionnelles en pointillés, distinctes de la hiérarchie.
+- JSON 1.1 et exports compacts/Markdown ; templates externes inclus dans l’empreinte. `--fail-on-partial` prend aussi en compte l’analyse de navigation.
+- Parseur officiel de templates embarqué, sans nouvelle dépendance runtime ni installation du compilateur Angular.
+
+## 0.1.1 — 5 octobre 2026
 
 - TypeScript devient une dépendance partagée (`>=5.4.2 <6.1`) pour réutiliser le compilateur compatible du projet lors d’une installation locale d’Atlas.
 - Tests de compatibilité sur huit versions de TypeScript et contrôle de l’installation sans second compilateur.

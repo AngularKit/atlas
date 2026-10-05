@@ -39,7 +39,19 @@ export class Project {
   readonly checker: ts.TypeChecker;
   readonly files: ts.SourceFile[];
   readonly excludedFiles: string[];
-  readonly fingerprint: string;
+  private readonly compilerFingerprint: string;
+  private readonly templates = new Map<string, string>();
+
+  get fingerprint(): string {
+    if (!this.templates.size) return this.compilerFingerprint;
+    const hash = createHash('sha256').update(this.compilerFingerprint);
+    for (const [file, text] of [...this.templates].sort(([a], [b]) => a.localeCompare(b, 'en'))) hash.update(file).update('\0').update(text).update('\0');
+    return `sha256:${hash.digest('hex')}`;
+  }
+
+  get templateFiles(): string[] { return [...this.templates.keys()].sort(); }
+
+  recordTemplate(file: string, text: string): void { this.templates.set(this.relative(file), text); }
   readonly options: ts.CompilerOptions;
 
   constructor(root: string, options: ScanOptions) {
@@ -78,7 +90,7 @@ export class Project {
     const compilerInputs = [...this.program.getSourceFiles()].sort((a, b) => a.fileName.localeCompare(b.fileName, 'en'));
     for (const source of compilerInputs) hash.update(this.relative(source.fileName)).update('\0').update(source.text).update('\0');
     hash.update(ts.version).update('\0').update(options.entry ?? '');
-    this.fingerprint = `sha256:${hash.digest('hex')}`;
+    this.compilerFingerprint = `sha256:${hash.digest('hex')}`;
   }
 
   relative(file: string): string { return slash(path.relative(this.root, file)); }
