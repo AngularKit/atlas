@@ -113,7 +113,7 @@ Open `map.html` in a browser. It works offline, without a server or external dep
 - Root routes appear initially. The + / − buttons expand and collapse branches and show descendant counts.
 - Search matches paths and component names, revealing the ancestors of matching routes. Selecting a result keeps the filter. “Vue d’ensemble” resets the map.
 - Selecting a path opens its components, guards, resolvers, redirects and sources. Guards remain associated with the route where they are declared.
-- Connections represent parent–child relationships, not navigation links or permissions.
+- Solid connections represent parent–child relationships. Optional dashed connections show candidate navigation destinations; permissions are not inferred.
 - The map supports zoom and pan. Branches appear vertically on mobile, and controls are keyboard accessible.
 - Diagnostics remain visible, including SSG limitations. Duplicate paths keep distinct identities.
 
@@ -125,6 +125,28 @@ import { writeFileSync } from 'node:fs';
 
 writeFileSync('map.html', toHtml(scan('/path/to/application')));
 ```
+
+## Navigation references (0.2+)
+
+The map and exports now include Angular template `routerLink` references (inline and `templateUrl`) and TypeScript `Router.navigate()` / `Router.navigateByUrl()` calls. No extra option is needed. Open **Références de navigation** for the full list; select a route for its outgoing/incoming references, then enable **Liens de la sélection** to show dashed candidate connections. Destinations hidden by a search remain accessible in the inspector. Solid edges remain parent–child relationships.
+
+Atlas records the expression, source location, owning class and originating route when known. Shared components and services keep an unassigned origin. Components reused by several routes produce one reference per route context; nested component usage is not propagated to parent screens.
+
+| Status | Meaning |
+|---|---|
+| `matched` | One or more explicit route patterns are candidates. Duplicates and parameters remain distinct; selection order, guards and redirects are not executed. |
+| `unmatched` | No explicit pattern found. Wildcards or unresolved routes may still handle the destination; this does not mean a broken link. |
+| `unresolved` | Dynamic destination or unsupported syntax/context; expression and evidence are retained. |
+| `disabled` | A literal `null` or `undefined` routerLink. |
+
+String literals and literal arrays of strings/numbers are read without executing application code. Relative routerLinks use their directly routed component context. `navigate()` uses the root by default; a TypeScript `relativeTo` is understood for the `ActivatedRoute` directly injected into that component through `inject` or a constructor parameter. Parent contexts, dynamic options, unknown origins and retained runtime path parameters stay unresolved. Absolute references in shared components can still have candidate destinations.
+
+The Angular **22.0.7** template parser is bundled (~496 kB of JavaScript before compression). Consumers do not install an additional Angular compiler; TypeScript remains shared. Read external templates are included in `project.files` and the project fingerprint. Unrecognized newer template syntax produces diagnostics. Standalone `RouterLink`/`RouterModule` imports establish directive scope; unconfirmed NgModule scopes or lookalikes remain unresolved.
+
+Limitations: dynamic template fields/signals, UrlTrees, outlets, matrix parameters, encoded segments, explicit template `relativeTo`, navigation calls inside template event expressions, host bindings, component inheritance and composition. Inline templates with JavaScript escapes are diagnosed instead of reporting approximate locations. References are limited to 10,000; external templates over 2 million characters or outside the project produce diagnostics.
+
+JSON **schema 1.1** adds `navigation: { status, references, diagnostics }`. `scope.status` still describes routes; `navigation.status` describes navigation analysis. `--fail-on-partial` now exits with code `2` if **either** is partial, after writing reports. Schemas still accept 1.0 inventories, and renderers tolerate missing navigation data. Compact output keeps navigation references and uncertainty.
+
 
 ## Compact reports
 
@@ -164,7 +186,7 @@ The evaluator follows constants, imports, tsconfig aliases, `satisfies`, type as
 
 ## Interpret the results
 
-`schemaVersion: "1.0"` is described by the [JSON schema](schema/inventory-v1.schema.json). IDs identify occurrences within a report; they are not persistent identifiers across commits. Routes sharing a component or path remain distinct.
+`schemaVersion: "1.1"` is described by the [JSON schema](schema/inventory-v1.schema.json). IDs identify occurrences within a report; they are not persistent identifiers across commits. Routes sharing a component or path remain distinct.
 
 - `scope.status: "static"`: no limitations were detected in the static forms analyzed. This does not guarantee runtime completeness.
 - `scope.status: "partial"`: some elements could not be resolved, or no supported registration entry point was found. Diagnostics show where to continue reviewing.
@@ -194,7 +216,7 @@ Calls to `withRoutes` or `provideServerRouting` from `@angular/ssr` produce `SER
 
 Tests, stories, declaration files and known generated directories are excluded from scan targets. `excludedFiles` lists exclusions encountered by the compiler and tsconfig, not every ignored file on disk. Imports outside the selected root are not expanded as application routes.
 
-`routerLink`, `navigate`, `navigateByUrl`, screenshots of the analyzed application and an MCP integration are future work. Atlas does not calculate a security score or label routes as unused.
+Screenshots of the analyzed application and an MCP integration are future work. Atlas does not calculate a security score or label routes as unused.
 
 ## Troubleshooting
 

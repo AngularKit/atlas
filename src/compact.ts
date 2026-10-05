@@ -14,7 +14,7 @@ export interface CompactRoute extends Pick<RouteRecord, 'id' | 'entryPointId' | 
 }
 
 export interface CompactInventory {
-  schemaVersion: '1.0';
+  schemaVersion: Inventory['schemaVersion'];
   format: 'compact';
   tool: Inventory['tool'];
   project: Pick<Inventory['project'], 'tsconfig' | 'fingerprint' | 'entryFilter'>;
@@ -22,12 +22,13 @@ export interface CompactInventory {
   entryPoints: Omit<Inventory['entryPoints'][number], 'expression'>[];
   routes: CompactRoute[];
   diagnostics: Inventory['diagnostics'];
+  navigation?: Inventory['navigation'];
 }
 
 /** A summary projection; scan() continues to return the full evidence model. */
 export function toCompactInventory(inventory: Inventory): CompactInventory {
   return {
-    schemaVersion: '1.0', format: 'compact', tool: { ...inventory.tool },
+    schemaVersion: inventory.schemaVersion, format: 'compact', tool: { ...inventory.tool },
     project: { tsconfig: inventory.project.tsconfig, fingerprint: inventory.project.fingerprint, entryFilter: inventory.project.entryFilter },
     scope: { status: inventory.scope.status, limitations: [...inventory.scope.limitations] },
     entryPoints: inventory.entryPoints.map(({ id, kind, source }) => ({ id, kind, source: { ...source } })),
@@ -43,6 +44,7 @@ export function toCompactInventory(inventory: Inventory): CompactInventory {
       ...(Object.keys(route.resolvers).length ? { resolvers: Object.fromEntries(Object.entries(route.resolvers).map(([key, ref]) => [key, ref.name ?? ref.expression])) } : {}),
       ...(route.lazyChildren ? { lazyChildren: true as const } : {}),
     })),
+    ...(inventory.navigation ? { navigation: structuredClone(inventory.navigation) } : {}),
     diagnostics: inventory.diagnostics.map(diagnostic => ({ ...diagnostic, source: diagnostic.source ? { ...diagnostic.source } : null })),
   };
 }

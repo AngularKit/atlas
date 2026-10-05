@@ -47,7 +47,7 @@ export interface EntryPoint {
 }
 
 export interface Inventory {
-  schemaVersion: '1.0';
+  schemaVersion: '1.0' | '1.1';
   tool: { name: '@angularkit/atlas'; version: string; typescriptVersion: string };
   project: {
     tsconfig: string;
@@ -63,10 +63,31 @@ export interface Inventory {
   entryPoints: EntryPoint[];
   routes: RouteRecord[];
   diagnostics: Diagnostic[];
+  /** Present since schema 1.1; separate from route hierarchy and runtime reachability. */
+  navigation?: NavigationInventory;
 }
 
 export interface ScanOptions {
   tsconfig?: string;
   /** Restrict router registration discovery to this source file, relative to root. */
   entry?: string;
+}
+
+export interface NavigationReference {
+  id: string;
+  kind: 'routerLink' | 'navigate' | 'navigateByUrl';
+  source: Source;
+  expression: string;
+  owner: { name: string; declaration: Source } | null;
+  sourceRouteId: string | null;
+  target: string | null;
+  targetRouteIds: string[];
+  status: 'matched' | 'unmatched' | 'unresolved' | 'disabled';
+  reason: string | null;
+}
+
+export interface NavigationInventory {
+  status: 'static' | 'partial';
+  references: NavigationReference[];
+  diagnostics: Diagnostic[];
 }

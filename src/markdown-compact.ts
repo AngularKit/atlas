@@ -1,3 +1,4 @@
+import { navigationMarkdown } from './markdown-navigation.js';
 import type { Inventory, RouteRecord } from './model.js';
 import { escapeMarkdown as escape, sourceLabel } from './markdown-text.js';
 
@@ -5,7 +6,7 @@ const limitations: Record<string, string> = {
   'Static declarations only; runtime reachability, mutations, permissions and observed user journeys are not evaluated.': 'Déclarations statiques uniquement : les parcours réels, mutations et permissions ne sont pas évalués.',
   'Registration calls are discovered in the selected project, without proving their execution at bootstrap.': 'Les enregistrements sont détectés dans le projet, sans prouver leur exécution au démarrage.',
   'Named outlets, custom matchers, lazy NgModules and arbitrary expressions are reported as unresolved.': 'Les outlets nommés, matchers personnalisés, NgModules différés et expressions non prises en charge sont signalés.',
-  'Navigation references (routerLink, navigate, navigateByUrl) are outside this first milestone.': 'Les liens routerLink et les appels navigate / navigateByUrl ne sont pas analysés.',
+  'Navigation references are static candidates, not observed journeys; dynamic destinations and unknown component contexts remain unresolved.': 'La navigation décrit des destinations candidates ; les liens dynamiques et contextes inconnus restent non résolus.',
   'Server rendering policies and generated prerender URLs are outside this first milestone.': 'Les politiques de rendu serveur et les URLs prérendues ne sont pas analysées.',
   'Excluded files lists encountered excluded inputs, not every excluded file on disk.': 'Le relevé des exclusions porte sur les entrées rencontrées, pas sur tous les fichiers du disque.',
   'Route order is the order of discovered siblings; unresolved array spreads can contain additional routes.': 'L’ordre des routes sœurs est conservé ; un tableau non résolu peut contenir des routes supplémentaires.',
@@ -94,5 +95,6 @@ export function compactMarkdown(inventory: Inventory): string {
   lines.push('## Périmètre et limites', '', `Configuration : ${escape(inventory.project.tsconfig)}`, '',
     'Les compteurs incluent les conteneurs et chemins vides ; ce ne sont pas des nombres de pages distinctes ou d’URLs prérendues.', '');
   for (const limitation of inventory.scope.limitations) lines.push(`- ${escape(limitations[limitation] ?? limitation)}`);
+  lines.push(...navigationMarkdown(inventory, true));
   return lines.join('\n') + '\n';
 }

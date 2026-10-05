@@ -97,3 +97,16 @@ Mesure locale sous macOS arm64, Node.js v24.18.0, Chromium 153.0.8010.12, sans i
 Les durées incluent les commandes Playwright et deux frames navigateur. Les fichiers HTML mesurent environ 4,6 Mo. Chaque essai vérifie le nombre de routes et de marqueurs, un résultat de recherche unique, le diagnostic de la route sélectionnée, l'absence d'erreur JavaScript et de requête réseau. Reproduction : `pnpm run benchmark:viewer`, après installation de Chromium ; résultats dans `reports/benchmark-viewer-10000.json`.
 
 Ce contrôle couvre ces deux formes synthétiques sur cette machine. Il ne mesure ni un parcours complet ni les performances sur mobile ; ces durées ne sont pas des seuils garantis. Le script reste hors du package npm et de la CI, sans seuil temporel fragile.
+
+## Navigation — 5 octobre 2026
+
+Comparaison avec l’archive npm publiée 0.1.1, sur les checkouts locaux courants des deux applications (Angular 22.0.7, TypeScript 6.0.3, `tsconfig.app.json`). Les tableaux de routes et les diagnostics de routes sont strictement identiques avant/après ; l’évolution des comptes depuis la première validation provient des sources actuelles des applications.
+
+| Application | Routes inchangées | Références de navigation | Destinations candidates | Non résolues |
+|---|---:|---:|---:|---:|
+| EasyAngularKit | 104 | 27 | 13 | 14 |
+| eak-lp (SSG) | 30 | 56 | 45 | 11 |
+
+Aucun diagnostic de lecture de template sur ces deux scans. Ces nombres sont un relevé de références statiques, pas une mesure d’exhaustivité : les liens issus de données, expressions dynamiques et compositions de composants gardent leurs limites explicites. Les URLs générées par le SSG ne sont toujours pas énumérées. Les rapports complets contiennent des références source privées et ne sont pas publiés dans ce dépôt.
+
+Les fixtures supplémentaires vérifient les templates inline/externes, blocs Angular et directives structurelles, la preuve fichier/ligne/colonne, les composants réutilisés, origines non attribuées, appels Router authentifiés par symboles, `relativeTo` injecté, faux navigate locaux, données dynamiques et UrlTrees non exécutés, doublons de motifs, wildcards, empreinte des templates, erreurs et frontières de fichiers, ainsi que le code de retour CLI strict. Les tests Chromium vérifient les liens entrants/sortants, l’accès aux destinations hors filtre, les connexions optionnelles et la distinction avec la hiérarchie. Les installations npm et pnpm vérifient qu’un template est analysable sans installer `@angular/compiler` chez le consommateur.

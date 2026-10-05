@@ -2,6 +2,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
 import { Project } from './project.js';
+import { scanNavigation } from './navigation.js';
 import { StaticReader } from './static.js';
 import { guardKinds, type Diagnostic, type EntryPoint, type Inventory, type RouteRecord, type ScanOptions } from './model.js';
 
@@ -206,12 +207,13 @@ export function scan(root = '.', options: ScanOptions = {}): Inventory {
   }
   if (!entryPoints.length) diagnostics.push({ code: 'NO_ENTRY_POINTS', message: 'No supported Angular router registration found. Select the application tsconfig or an entry source file; this is not proof that the application has no routes.', source: null, routeId: null });
 
+  const navigation = scanNavigation(project, routes);
   return {
-    schemaVersion: '1.0',
+    schemaVersion: '1.1',
     tool: { name: '@angularkit/atlas', version, typescriptVersion: ts.version },
     project: {
       tsconfig: project.relative(project.config), fingerprint: project.fingerprint,
-      files: project.files.map(f => project.relative(f.fileName)), excludedFiles: project.excludedFiles,
+      files: [...project.files.map(f => project.relative(f.fileName)), ...project.templateFiles].sort((a, b) => a.localeCompare(b, 'en')), excludedFiles: project.excludedFiles,
       entryFilter: entryFilter ? project.relative(entryFilter) : null,
     },
     scope: {
@@ -220,12 +222,12 @@ export function scan(root = '.', options: ScanOptions = {}): Inventory {
         'Static declarations only; runtime reachability, mutations, permissions and observed user journeys are not evaluated.',
         'Registration calls are discovered in the selected project, without proving their execution at bootstrap.',
         'Named outlets, custom matchers, lazy NgModules and arbitrary expressions are reported as unresolved.',
-        'Navigation references (routerLink, navigate, navigateByUrl) are outside this first milestone.',
+        'Navigation references are static candidates, not observed journeys; dynamic destinations and unknown component contexts remain unresolved.',
         'Server rendering policies and generated prerender URLs are outside this first milestone.',
         'Excluded files lists encountered excluded inputs, not every excluded file on disk.',
         'Route order is the order of discovered siblings; unresolved array spreads can contain additional routes.',
       ],
     },
-    entryPoints, routes, diagnostics,
+    entryPoints, routes, diagnostics, navigation,
   };
 }
