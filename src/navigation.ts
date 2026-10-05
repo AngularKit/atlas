@@ -106,10 +106,10 @@ export function scanNavigation(project: Project, routes: RouteRecord[]): Navigat
       let inlineSource: ts.SourceFile | undefined;
       if (inline) {
         const literal = reader.resolve(inline);
-        if (!literal || !ts.isStringLiteralLike(literal) || literal.text !== literal.getText().slice(1, -1)) {
+        if (!literal || !ts.isStringLiteralLike(literal) || literal.text !== literal.getText().slice(1, -1).replace(/\r\n?/g, '\n')) {
           report('NAVIGATION_TEMPLATE', 'Inline templates must be literal, without JavaScript escape sequences; use templateUrl for exact source locations.', inline); continue;
         }
-        text = literal.text; inlineSource = literal.getSourceFile(); file = inlineSource.fileName; offset = literal.getStart() + 1;
+        text = literal.getText().slice(1, -1); inlineSource = literal.getSourceFile(); file = inlineSource.fileName; offset = literal.getStart() + 1;
       } else {
         const name = reader.string(external!);
         if (name === undefined) { report('NAVIGATION_TEMPLATE', 'Dynamic templateUrl cannot be read.', external!); continue; }

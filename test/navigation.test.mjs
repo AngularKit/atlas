@@ -151,3 +151,11 @@ test('strict CLI writes outputs then returns partial for unresolved navigation a
   const result=JSON.parse(fs.readFileSync(output));
   assert.equal(result.scope.status,'static'); assert.equal(result.navigation.status,'partial');
 });
+
+
+test('preserves exact inline source positions with Windows CRLF line endings',t=>{
+  const root=fixture(t,"@Component({imports:[RouterLink],template:`\r\n<a routerLink=\"/home\">Go</a>\r\n`}) class Page {} provideRouter([{path:'home',component:Page}]);");
+  const result=scan(root); assert.equal(refs(result)[0].target,'/home');
+  assert.deepEqual(refs(result)[0].source,{file:'app.ts',line:3,column:4});
+  assert.deepEqual(result.navigation.diagnostics,[]);
+});
